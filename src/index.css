@@ -61,3 +61,27 @@ body {
   color: var(--color-danger);
   border-color: rgba(235, 87, 87, 0.2);
 }
+
+/* ==========================================================================
+   RESPONSIVE LAYOUT FOR NAVIGATION EN REACT
+   ========================================================================== */
+
+/* Por defecto en celulares (Mobile-First) */
+.app-sidebar {
+  display: none !important; /* Oculta la barra de PC en teléfonos */
+}
+
+.mobile-nav {
+  display: flex !important;
+}
+
+/* En pantallas medianas y grandes (Desktop) */
+@media (min-width: 768px) {
+  .app-sidebar {
+    display: flex !important; /* Muestra la barra lateral */
+  }
+  
+  .mobile-nav {
+    display: none !important; /* Oculta la botonera de celular */
+  }
+}
