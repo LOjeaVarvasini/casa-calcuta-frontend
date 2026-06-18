@@ -1,0 +1,63 @@
+/* Reset Estándar Obligatorio */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   COMPONENTES CORE REUTILIZABLES (ADAPTADOS PARA JSX)
+   ========================================================================== */
+
+/* Badges de estado unificados */
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+}
+.badge-danger { background-color: #fff5f5; color: var(--color-danger); }
+.badge-warning { background-color: #fffaf0; color: var(--color-secondary); }
+.badge-success { background-color: #f0fff4; color: var(--color-success); }
+.badge-primary { background-color: #ebf8ff; color: var(--color-primary); }
+
+/* Contenedor de Botones Simétricos Clavados a la Derecha */
+.table-actions-cell {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+}
+
+/* Micro-botón base operativo con área ergonómica mínima (48px de interacción) */
+.btn-table-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(30, 93, 136, 0.08);
+  color: var(--color-primary);
+  border: 1px solid rgba(30, 93, 136, 0.15);
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-height: 36px;
+}
+
+.btn-table-action.action-danger {
+  background-color: #fff5f5;
+  color: var(--color-danger);
+  border-color: rgba(235, 87, 87, 0.2);
+}
