@@ -1,20 +1,18 @@
+// src/App.jsx (Código modificado)
+
 import React, { useState } from 'react';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import Familias from './pages/Familias'; // <-- NUEVA IMPORTACIÓN
 
 function App() {
-  // Estado que maneja la pantalla en el visor central ('login', 'dashboard', 'familias', 'listas')
   const [pantallaActual, setPantallaActual] = useState('login');
-  
-  // Estado para controlar la apertura del popup 'Más' en celulares
   const [menuMasAbierto, setMenuMasAbierto] = useState(false);
 
-  // Ruteador 1: Puerta de acceso estricta
   if (pantallaActual === 'login') {
     return <Login onLoginSuccess={() => setPantallaActual('dashboard')} />;
   }
 
-  // Ruteador 2: Entorno operativo unificado bajo tu base.css
   return (
     <div className="app-container">
       
@@ -52,6 +50,7 @@ function App() {
             <h1>
               {pantallaActual === 'dashboard' && 'Panel Principal'}
               {pantallaActual === 'familias' && 'Padrón Único de Familias'}
+              {pantallaActual === 'integrantes' && 'Ficha de Integrantes'} {/* <-- Título dinámico para la pantalla puente */}
               {pantallaActual === 'listas' && 'Listas de Espera'}
             </h1>
           </div>
@@ -65,13 +64,24 @@ function App() {
         </header>
 
         <main className="main-content">
-          {/* Inyección secuencial de componentes */}
           {pantallaActual === 'dashboard' && (
             <Dashboard onNavegar={(destino) => setPantallaActual(destino)} />
           )}
 
+          {/* CÓDIGO CORREGIDO: Se reemplaza el placeholder por el componente real */}
           {pantallaActual === 'familias' && (
             <Familias onVerFicha={() => setPantallaActual('integrantes')} />
+          )}
+
+          {/* Pantalla puente para "Ver ficha" (ya existente, se mantiene igual) */}
+          {pantallaActual === 'integrantes' && (
+            <div className="info-profile-box" style={{ display: 'block' }}>
+              <h2>Ficha de Integrantes de la Familia</h2>
+              <p style={{ color: '#718096', marginTop: '10px' }}>Pantalla puente para simular el flujo interno.</p>
+              <button className="btn-table-action" onClick={() => setPantallaActual('familias')} style={{ marginTop: '20px' }}>
+                ⬅️ Volver al Padrón
+              </button>
+            </div>
           )}
 
           {pantallaActual === 'listas' && (
@@ -80,16 +90,6 @@ function App() {
               <p style={{ color: '#718096', marginTop: '10px' }}>Pantalla en desarrollo para el próximo incremento.</p>
               <button className="btn-table-action" onClick={() => setPantallaActual('dashboard')} style={{ marginTop: '20px' }}>
                 ⬅️ Volver al Panel
-              </button>
-            </div>
-          )}
-
-          {pantallaActual === 'integrantes' && (
-            <div className="info-profile-box" style={{ display: 'block' }}>
-              <h2>Ficha de Integrantes de la Familia</h2>
-              <p style={{ color: '#718096', marginTop: '10px' }}>Pantalla puente para simular el flujo interno.</p>
-              <button className="btn-table-action" onClick={() => setPantallaActual('familias')} style={{ marginTop: '20px' }}>
-                ⬅️ Volver al Padrón
               </button>
             </div>
           )}
@@ -116,7 +116,6 @@ function App() {
           <span className="mobile-nav-icon">📋</span>Asistencia
         </button>
         
-        {/* DROPDOWN POP-UP MÓVIL INTERACTIVO */}
         <div className="mobile-nav-dropdown-container">
           <button 
             className={`mobile-nav-item btn-dropdown-trigger ${menuMasAbierto ? 'open' : ''}`} 
