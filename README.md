@@ -54,9 +54,79 @@ Para clonar, instalar las dependencias y levantar el entorno de desarrollo local
 
 ---
 
+## 🔐 Autenticación
+
+- El login del frontend consume `POST /api/auth/login`.
+- Luego valida la sesión con `GET /api/auth/me`.
+- La URL base debe salir de `VITE_API_URL` y apuntar al backend que corresponda al entorno.
+- El token se guarda en `localStorage` como `access_token`.
+- El cierre de sesión consume `POST /api/auth/logout`.
+
+## ⚙️ Variables de entorno
+
+Crear un archivo `.env.local` en la raíz del proyecto con una URL de backend local, por ejemplo:
+
+```env
+VITE_API_URL=http://localhost:8000
+```
+
+En producción, el workflow usa el secret `VITE_API_URL` con la URL real del backend, por ejemplo `https://casacalcuta.backend.paidos.net.ar`.
+
+## 🖥️ Estado actual del frontend
+
+- Pantalla de login funcional.
+- Sesión persistente al recargar usando `access_token`.
+- Feedback visual de carga, error y login exitoso.
+- Base visual mobile-first tomada de los archivos `login.html`, `login.css` y `base.css`.
+
+## 🚀 Deploy a producción
+
+La rama `production` dispara un deploy automático con GitHub Actions.
+
+### Sitio en CloudPanel
+
+- Tipo de sitio: `Static HTML`
+- Dominio: `casacalcuta.paidos.net.ar`
+- El directorio remoto debe ser el root público del sitio en CloudPanel.
+
+### Secrets requeridos en GitHub
+
+- `SSH_HOST`: IP o dominio del server Ubuntu.
+- `SSH_PORT`: puerto SSH, normalmente `22`.
+- `SSH_USER`: usuario SSH habilitado en el server.
+- `SSH_PRIVATE_KEY`: clave privada SSH autorizada en el server.
+- `DEPLOY_PATH`: ruta pública del sitio en CloudPanel.
+- `VITE_API_URL`: URL del backend de producción.
+
+### Opcionales para Cloudflare
+
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ZONE_ID`
+
+### Flujo
+
+1. Hacer push a la rama `production`.
+2. GitHub Actions compila el frontend con `npm run build`.
+3. Se sube `dist/` al server por SSH.
+4. Si hay secretos de Cloudflare, se purga el cache.
+
+### Paso que falta del lado tuyo
+
+- Generar o elegir una clave SSH para deploy.
+- Autorizar su clave pública en el server.
+- Cargar los secrets en GitHub.
+- Confirmar la ruta exacta de `DEPLOY_PATH` en CloudPanel.
+- Verificar que `VITE_API_URL` apunte al backend real de producción.
+
+### Nota para SPA
+
+- Si después agregamos rutas de React Router, CloudPanel/Nginx debe reescribir las rutas a `index.html`.
+
+---
+
 ## 🚀 Prácticas de Desarrollo Obligatorias
 
-- **No Hardcodear URLs:** Cualquier llamada al backend debe consumir de forma dinámica la variable de entorno expuesta por Vite a través del objeto `meta`.
+- **No Hardcodear URLs:** Cualquier llamada al backend debe consumir de forma dinámica la variable de entorno expuesta por Vite a través de `import.meta.env`.
 
 - **Respetar los Tokens:** Está prohibido el uso de valores hexadecimales sueltos en los componentes; se debe invocar siempre a las variables del sistema (`var(--color-primary)`, `var(--space-md)`).
 

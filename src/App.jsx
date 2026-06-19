@@ -1,45 +1,87 @@
-import React from 'react';
+import { createElement, useEffect, useState } from 'react'
+import Login from './pages/Login/Login.jsx'
+import { logoutRequest, meRequest } from './config/api.js'
 
 function App() {
+  const [session, setSession] = useState(null)
+  const [booting, setBooting] = useState(true)
+
+  useEffect(() => {
+    const restoreSession = async () => {
+      const token = localStorage.getItem('access_token')
+
+      if (!token) {
+        setBooting(false)
+        return
+      }
+
+      try {
+        const response = await meRequest(token)
+        setSession({ accessToken: token, user: response.user || response.data || response })
+      } catch {
+        localStorage.removeItem('access_token')
+      } finally {
+        setBooting(false)
+      }
+    }
+
+    restoreSession()
+  }, [])
+
+  const handleLogin = ({ accessToken, user }) => {
+    setSession({ accessToken, user })
+  }
+
+  const handleLogout = async () => {
+    try {
+      if (session?.accessToken) {
+        await logoutRequest(session.accessToken)
+      }
+    } catch {
+      // Si logout falla, limpiamos igual la sesión local.
+    } finally {
+      localStorage.removeItem('access_token')
+      setSession(null)
+    }
+  }
+
+  if (booting) {
+    return (
+      <div className="login-wrapper" style={{ placeItems: 'center', justifyContent: 'center' }}>
+        <div className="login-success">Cargando sesión...</div>
+      </div>
+    )
+  }
+
+  if (!session) {
+    return createElement(Login, { onLogin: handleLogin })
+  }
+
   return (
-    <div className="app-container" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      
-      {/* Cabecera Temporal de Verificación del UI Kit */}
-      <header style={{ 
-        padding: '24px', 
-        textAlign: 'center', 
-        background: 'var(--color-card)', 
-        borderBottom: '1px solid var(--color-border)',
-        boxShadow: 'var(--shadow-sm)' 
-      }}>
-        <h1 style={{ color: 'var(--color-primary)', fontSize: '1.5rem', fontWeight: 800 }}>
-          Casa Calcuta — Frontend Core
-        </h1>
-        <p style={{ color: '#718096', fontSize: '0.875rem', marginTop: '4px' }}>
-          Entorno de desarrollo inicializado con Vite y React JS
-        </p>
-      </header>
+    <main className="login-wrapper" style={{ padding: 'var(--space-lg)' }}>
+      <section className="login-form-panel" style={{ padding: 0 }}>
+        <div className="form-box" style={{ maxWidth: '560px' }}>
+          <header className="form-header" style={{ textAlign: 'left' }}>
+            <div className="brand-badge">CC</div>
+            <h1>Sesión iniciada</h1>
+            <p>Autenticación confirmada contra la API del backend.</p>
+          </header>
 
-      {/* Espacio de trabajo para los futuros módulos */}
-      <main style={{ flex: 1, padding: '32px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ 
-          background: 'var(--color-card)', 
-          padding: '24px', 
-          borderRadius: 'var(--radius-md)', 
-          border: '1px solid var(--color-border)',
-          maxWidth: '400px',
-          textAlign: 'center'
-        }}>
-          <span style={{ fontSize: '2rem' }}>📦</span>
-          <h3 style={{ marginTop: '12px', fontWeight: 700 }}>Esqueleto Listo</h3>
-          <p style={{ color: '#4a5568', fontSize: '0.875rem', marginTop: '8px', lineHeight: 1.5 }}>
-            Los tokens cromáticos y el motor responsive se acoplaron con éxito. Próximo paso: Modularizar los componentes comunes de navegación.
-          </p>
+          <div className="login-success">
+            <strong>Usuario:</strong> {session.user?.name || session.user?.nombre || session.user?.email || 'Autenticado'}
+          </div>
+
+          <div className="login-note" style={{ marginTop: 'var(--space-md)', textAlign: 'left' }}>
+            <code>access_token</code> guardado en localStorage y validado con <code>/api/auth/me</code>.
+          </div>
+
+          <button className="btn-primary" type="button" onClick={handleLogout} style={{ marginTop: 'var(--space-lg)' }}>
+            Cerrar sesión
+          </button>
         </div>
-      </main>
-
-    </div>
-  );
+      </section>
+    </main>
+  )
 }
 
 export default App;

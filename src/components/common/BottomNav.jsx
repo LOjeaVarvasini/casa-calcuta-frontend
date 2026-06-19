@@ -1,5 +1,3 @@
-import React from 'react';
-
 function BottomNav() {
   return (
     <nav className="mobile-nav" style={{
