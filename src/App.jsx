@@ -1,46 +1,94 @@
 import React, { useState } from 'react';
 import Login from './pages/Login';
-import Sidebar from './components/common/Sidebar';
-import BottomNav from './components/common/BottomNav';
+import Dashboard from './pages/Dashboard';
 
 function App() {
-  // Este estado va a manejar qué "habitación" o pantalla se está viendo en el centro
-  // Posibles valores: 'login', 'dashboard', 'familias', 'integrantes', 'asistencia', 'agenda'
+  // Estado que maneja la pantalla en el visor central ('login', 'dashboard', 'familias', 'listas')
   const [pantallaActual, setPantallaActual] = useState('login');
+  
+  // Estado para controlar la apertura del popup 'Más' en celulares
+  const [menuMasAbierto, setMenuMasAbierto] = useState(false);
 
-  // Función que el menú lateral y el inferior usarán para cambiar de pantalla
-  const cambiarPantalla = (nombrePantalla) => {
-    setPantallaActual(nombrePantalla);
-  };
-
-  // FLUJO 1: Si la pantalla actual es el Login, se muestra sola en toda la pantalla
+  // Ruteador 1: Puerta de acceso estricta
   if (pantallaActual === 'login') {
-    return <Login onLoginSuccess={() => setPantallaActual('familias')} />;
+    return <Login onLoginSuccess={() => setPantallaActual('dashboard')} />;
   }
 
-  // FLUJO 2: Si ya pasamos el Login, se arma el cascarón común con el ruteo interno
+  // Ruteador 2: Entorno operativo unificado bajo tu base.css
   return (
-    <div className="app-layout" style={{ display: 'flex', minHeight: '100vh' }}>
+    <div className="app-container">
       
-      {/* Le pasamos la función al menú de PC para que sepa qué botones se clickean */}
-      <Sidebar onNavegar={cambiarPantalla} pantallaActiva={pantallaActual} />
+      {/* BARRA LATERAL DESKTOP (SIDEBAR) */}
+      <aside className="app-sidebar">
+        <div className="sidebar-header">
+          <div className="brand-badge">CC</div>
+          <span className="sidebar-brand">Casa Calcuta</span>
+        </div>
+        <nav>
+          <ul className="sidebar-nav">
+            <li className={`nav-item ${pantallaActual === 'dashboard' ? 'active' : ''}`}>
+              <a href="#dashboard" onClick={(e) => { e.preventDefault(); setPantallaActual('dashboard'); }}>
+                <span>📊</span> Panel Principal
+              </a>
+            </li>
+            <li className={`nav-item ${pantallaActual === 'familias' ? 'active' : ''}`}>
+              <a href="#familias" onClick={(e) => { e.preventDefault(); setPantallaActual('familias'); }}>
+                <span>👥</span> Gestión de Familias
+              </a>
+            </li>
+            <li className="nav-item"><a href="#asistencia"><span>📋</span> Registrar Asistencia</a></li>
+            <li className="nav-item"><a href="#listas"><span>⏳</span> Listas de Espera</a></li>
+            <li className="nav-item"><a href="#donaciones"><span>📦</span> Donaciones</a></li>
+            <li className="nav-item"><a href="#usuarios"><span>⚙️</span> Administración</a></li>
+          </ul>
+        </nav>
+      </aside>
 
-      {/* Área donde van a ir rotando nuestras pantallas estéticas */}
-      <div className="app-content-wrapper" style={{ 
-        flex: 1, 
-        padding: 'var(--space-lg)', 
-        paddingBottom: '100px', 
-        backgroundColor: 'var(--color-bg)' 
-      }}>
+      {/* ÁREA DE CONTENIDO VARIABLE */}
+      <div className="app-content-area">
         
-        <main style={{ marginTop: 'var(--space-md)' }}>
-          {/* Ruteador visual condicional */}
-          {pantallaActual === 'familias' && <Familias onVerFicha={() => setPantallaActual('integrantes')} />}
-          
+        <header className="app-header">
+          <div className="header-title">
+            <h1>
+              {pantallaActual === 'dashboard' && 'Panel Principal'}
+              {pantallaActual === 'familias' && 'Padrón Único de Familias'}
+              {pantallaActual === 'listas' && 'Listas de Espera'}
+            </h1>
+          </div>
+          <div className="user-profile">
+            <div className="user-info">
+              <p className="user-name">Regina Álvarez</p>
+              <p className="user-role">Coordinador</p>
+            </div>
+            <div className="brand-badge" style={{ width: '40px', height: '40px', borderRadius: '50%' }}>RA</div>
+          </div>
+        </header>
+
+        <main className="main-content">
+          {/* Inyección secuencial de componentes */}
+          {pantallaActual === 'dashboard' && (
+            <Dashboard onNavegar={(destino) => setPantallaActual(destino)} />
+          )}
+
+          {pantallaActual === 'familias' && (
+            <Familias onVerFicha={() => setPantallaActual('integrantes')} />
+          )}
+
+          {pantallaActual === 'listas' && (
+            <div className="info-profile-box" style={{ display: 'block' }}>
+              <h2>Módulo: Listas de Espera</h2>
+              <p style={{ color: '#718096', marginTop: '10px' }}>Pantalla en desarrollo para el próximo incremento.</p>
+              <button className="btn-table-action" onClick={() => setPantallaActual('dashboard')} style={{ marginTop: '20px' }}>
+                ⬅️ Volver al Panel
+              </button>
+            </div>
+          )}
+
           {pantallaActual === 'integrantes' && (
-            <div style={{ background: 'white', padding: 'var(--space-lg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-              <h2>Ficha de Integrantes (Próximamente)</h2>
-              <button className="btn-table-action" onClick={() => setPantallaActual('familias')} style={{ marginTop: 'var(--space-md)' }}>
+            <div className="info-profile-box" style={{ display: 'block' }}>
+              <h2>Ficha de Integrantes de la Familia</h2>
+              <p style={{ color: '#718096', marginTop: '10px' }}>Pantalla puente para simular el flujo interno.</p>
+              <button className="btn-table-action" onClick={() => setPantallaActual('familias')} style={{ marginTop: '20px' }}>
                 ⬅️ Volver al Padrón
               </button>
             </div>
@@ -48,8 +96,47 @@ function App() {
         </main>
       </div>
 
-      {/* Le pasamos la función a la botonera de celular */}
-      <BottomNav onNavegar={cambiarPantalla} pantallaActiva={pantallaActual} />
+      {/* BARRA DE NAVEGACIÓN INFERIOR MOBILE */}
+      <nav className="mobile-nav">
+        <button 
+          className={`mobile-nav-item ${pantallaActual === 'dashboard' ? 'active' : ''}`}
+          onClick={() => { setPantallaActual('dashboard'); setMenuMasAbierto(false); }}
+        >
+          <span className="mobile-nav-icon">📊</span>Panel
+        </button>
+        
+        <button 
+          className={`mobile-nav-item ${pantallaActual === 'familias' ? 'active' : ''}`}
+          onClick={() => { setPantallaActual('familias'); setMenuMasAbierto(false); }}
+        >
+          <span className="mobile-nav-icon">👥</span>Familias
+        </button>
+        
+        <button className="mobile-nav-item" onClick={() => setMenuMasAbierto(false)}>
+          <span className="mobile-nav-icon">📋</span>Asistencia
+        </button>
+        
+        {/* DROPDOWN POP-UP MÓVIL INTERACTIVO */}
+        <div className="mobile-nav-dropdown-container">
+          <button 
+            className={`mobile-nav-item btn-dropdown-trigger ${menuMasAbierto ? 'open' : ''}`} 
+            onClick={() => setMenuMasAbierto(!menuMasAbierto)}
+          >
+            <span className="mobile-nav-icon">➕</span>Más
+          </button>
+          <div className="mobile-nav-popup">
+            <a href="#listas" onClick={(e) => { e.preventDefault(); setPantallaActual('listas'); setMenuMasAbierto(false); }}>
+              <span>⏳</span> Listas de Espera
+            </a>
+            <a href="#donaciones" onClick={(e) => { e.preventDefault(); setMenuMasAbierto(false); }}>
+              <span>📦</span> Donaciones
+            </a>
+            <a href="#login" onClick={(e) => { e.preventDefault(); setPantallaActual('login'); setMenuMasAbierto(false); }}>
+              <span>⚙️</span> Salir del Sistema
+            </a>
+          </div>
+        </div>
+      </nav>
 
     </div>
   );
