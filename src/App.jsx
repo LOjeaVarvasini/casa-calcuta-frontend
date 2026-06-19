@@ -1,42 +1,55 @@
-import React from 'react';
+import React, { useState } from 'react';
+import Login from './pages/Login';
+import Sidebar from './components/common/Sidebar';
+import BottomNav from './components/common/BottomNav';
 
 function App() {
-  return (
-    <div className="app-container" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      
-      {/* Cabecera Temporal de Verificación del UI Kit */}
-      <header style={{ 
-        padding: '24px', 
-        textAlign: 'center', 
-        background: 'var(--color-card)', 
-        borderBottom: '1px solid var(--color-border)',
-        boxShadow: 'var(--shadow-sm)' 
-      }}>
-        <h1 style={{ color: 'var(--color-primary)', fontSize: '1.5rem', fontWeight: 800 }}>
-          Casa Calcuta — Frontend Core
-        </h1>
-        <p style={{ color: '#718096', fontSize: '0.875rem', marginTop: '4px' }}>
-          Entorno de desarrollo inicializado con Vite y React JS
-        </p>
-      </header>
+  // Este estado va a manejar qué "habitación" o pantalla se está viendo en el centro
+  // Posibles valores: 'login', 'dashboard', 'familias', 'integrantes', 'asistencia', 'agenda'
+  const [pantallaActual, setPantallaActual] = useState('login');
 
-      {/* Espacio de trabajo para los futuros módulos */}
-      <main style={{ flex: 1, padding: '32px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ 
-          background: 'var(--color-card)', 
-          padding: '24px', 
-          borderRadius: 'var(--radius-md)', 
-          border: '1px solid var(--color-border)',
-          maxWidth: '400px',
-          textAlign: 'center'
-        }}>
-          <span style={{ fontSize: '2rem' }}>📦</span>
-          <h3 style={{ marginTop: '12px', fontWeight: 700 }}>Esqueleto Listo</h3>
-          <p style={{ color: '#4a5568', fontSize: '0.875rem', marginTop: '8px', lineHeight: 1.5 }}>
-            Los tokens cromáticos y el motor responsive se acoplaron con éxito. Próximo paso: Modularizar los componentes comunes de navegación.
-          </p>
-        </div>
-      </main>
+  // Función que el menú lateral y el inferior usarán para cambiar de pantalla
+  const cambiarPantalla = (nombrePantalla) => {
+    setPantallaActual(nombrePantalla);
+  };
+
+  // FLUJO 1: Si la pantalla actual es el Login, se muestra sola en toda la pantalla
+  if (pantallaActual === 'login') {
+    return <Login onLoginSuccess={() => setPantallaActual('familias')} />;
+  }
+
+  // FLUJO 2: Si ya pasamos el Login, se arma el cascarón común con el ruteo interno
+  return (
+    <div className="app-layout" style={{ display: 'flex', minHeight: '100vh' }}>
+      
+      {/* Le pasamos la función al menú de PC para que sepa qué botones se clickean */}
+      <Sidebar onNavegar={cambiarPantalla} pantallaActiva={pantallaActual} />
+
+      {/* Área donde van a ir rotando nuestras pantallas estéticas */}
+      <div className="app-content-wrapper" style={{ 
+        flex: 1, 
+        padding: 'var(--space-lg)', 
+        paddingBottom: '100px', 
+        backgroundColor: 'var(--color-bg)' 
+      }}>
+        
+        <main style={{ marginTop: 'var(--space-md)' }}>
+          {/* Ruteador visual condicional */}
+          {pantallaActual === 'familias' && <Familias onVerFicha={() => setPantallaActual('integrantes')} />}
+          
+          {pantallaActual === 'integrantes' && (
+            <div style={{ background: 'white', padding: 'var(--space-lg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+              <h2>Ficha de Integrantes (Próximamente)</h2>
+              <button className="btn-table-action" onClick={() => setPantallaActual('familias')} style={{ marginTop: 'var(--space-md)' }}>
+                ⬅️ Volver al Padrón
+              </button>
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* Le pasamos la función a la botonera de celular */}
+      <BottomNav onNavegar={cambiarPantalla} pantallaActiva={pantallaActual} />
 
     </div>
   );

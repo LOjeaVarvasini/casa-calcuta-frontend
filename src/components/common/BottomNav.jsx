@@ -1,39 +1,24 @@
 import React from 'react';
 
-function BottomNav() {
+function BottomNav({ onNavegar, pantallaActiva }) {
+  const obtenerEstiloItem = (nombre) => ({
+    display: 'flex', flexDirection: 'column', alignItems: 'center', textDecoration: 'none',
+    fontSize: '0.75rem', fontWeight: 600, minWidth: '48px', cursor: 'pointer',
+    color: pantallaActiva === nombre ? 'var(--color-primary)' : 'var(--color-text)'
+  });
+
   return (
     <nav className="mobile-nav" style={{
-      position: 'fixed',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      height: '64px',
-      backgroundColor: 'var(--color-card)',
-      borderTop: '1px solid var(--color-border)',
-      display: 'flex',
-      justifyContent: 'space-around',
-      alignItems: 'center',
-      zIndex: 1000,
-      boxShadow: '0 -2px 10px rgba(0,0,0,0.03)'
+      position: 'fixed', bottom: 0, left: 0, right: 0, height: '64px',
+      backgroundColor: 'var(--color-card)', borderTop: '1px solid var(--color-border)',
+      display: 'flex', justifycontent: 'space-around', alignItems: 'center', zIndex: 1000
     }}>
-      <a href="#dashboard" style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', textDecoration: 'none',
-        color: 'var(--color-text)', fontSize: '0.75rem', fontWeight: 600, minWidth: '48px'
-      }}>
-        <span style={{ fontSize: '1.25rem' }}>📊</span> Panel
-      </a>
-      <a href="#familias" style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', textDecoration: 'none',
-        color: 'var(--color-text)', fontSize: '0.75rem', fontWeight: 600, minWidth: '48px'
-      }}>
+      <div onClick={() => onNavegar('familias')} style={obtenerEstiloItem('familias')}>
         <span style={{ fontSize: '1.25rem' }}>👥</span> Familias
-      </a>
-      <a href="#asistencia" style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', textDecoration: 'none',
-        color: 'var(--color-text)', fontSize: '0.75rem', fontWeight: 600, minWidth: '48px'
-      }}>
-        <span style={{ fontSize: '1.25rem' }}>📋</span> Asistencia
-      </a>
+      </div>
+      <div onClick={() => onNavegar('login')} style={obtenerEstiloItem('login')}>
+        <span style={{ fontSize: '1.25rem' }}>🚪</span> Salir
+      </div>
     </nav>
   );
 }
