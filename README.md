@@ -89,40 +89,12 @@ La rama `production` dispara un deploy automático con GitHub Actions.
 - Dominio: `casacalcuta.paidos.net.ar`
 - El directorio remoto debe ser el root público del sitio en CloudPanel.
 
-### Secrets requeridos en GitHub
-
-- `SSH_HOST`: IP o dominio del server Ubuntu.
-- `SSH_PORT`: puerto SSH, normalmente `22`.
-- `SSH_USER`: usuario SSH habilitado en el server.
-- `SSH_PRIVATE_KEY`: clave privada SSH autorizada en el server.
-- `DEPLOY_PATH`: ruta pública del sitio en CloudPanel.
-- `VITE_API_URL`: URL del backend de producción.
-
-### Opcionales para Cloudflare
-
-- `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_ZONE_ID`
-
 ### Flujo
 
 1. Hacer push a la rama `production`.
 2. GitHub Actions compila el frontend con `npm run build`.
 3. Se sube `dist/` al server por SSH.
-4. Si hay secretos de Cloudflare, se purga el cache.
 
-### Paso que falta del lado tuyo
-
-- Generar o elegir una clave SSH para deploy.
-- Autorizar su clave pública en el server.
-- Cargar los secrets en GitHub.
-- Confirmar la ruta exacta de `DEPLOY_PATH` en CloudPanel.
-- Verificar que `VITE_API_URL` apunte al backend real de producción.
-
-### Nota para SPA
-
-- Si después agregamos rutas de React Router, CloudPanel/Nginx debe reescribir las rutas a `index.html`.
-
----
 
 ## 🚀 Prácticas de Desarrollo Obligatorias
 
