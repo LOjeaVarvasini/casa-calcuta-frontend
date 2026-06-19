@@ -110,7 +110,6 @@ function Login({ onLogin }) {
               {loading ? 'Validando...' : 'Iniciar sesión'}
             </button>
 
-            <p className="login-note">Base URL: {import.meta.env.VITE_API_URL || 'http://localhost:8000'}</p>
           </form>
 
           <footer className="form-footer">
