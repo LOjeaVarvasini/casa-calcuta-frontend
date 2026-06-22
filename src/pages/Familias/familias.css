@@ -1,0 +1,114 @@
+/* ==========================================================================
+   ESTILOS ESPECÍFICOS: COMPONENTES DEL PADRÓN DE FAMILIAS
+   ========================================================================== */
+
+.families-grid {
+  display: grid;
+  grid-template-columns: 1fr; /* Una columna por defecto en celulares */
+  gap: var(--space-md);
+}
+
+.family-card {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.2s ease;
+}
+
+.family-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card-family-header {
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-xs);
+}
+
+.family-name {
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.referent-info {
+  font-size: var(--text-sm);
+  color: #718096;
+  margin-top: 2px;
+}
+
+.card-family-body {
+  padding: var(--space-md);
+  display: flex;
+  flex-wrap: wrap; /* Permite que los indicadores bajen si la pantalla es muy chica */
+  gap: var(--space-md);
+  flex: 1;
+}
+
+.metric-mini {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: #4a5568;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Colores semánticos para control binario de autorizaciones legales (RF3.3) */
+.doc-ok { color: var(--color-success); }
+.doc-pending { color: var(--color-danger); }
+
+/* Acciones inferiores de la tarjeta */
+.card-family-footer {
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  gap: var(--space-sm);
+  justify-content: flex-end;
+  border-bottom-left-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+}
+
+.btn-card-action {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.2s ease;
+}
+
+.btn-card-action:hover {
+  background-color: rgba(30, 93, 136, 0.08);
+}
+
+.btn-card-action.action-secondary {
+  color: #4a5568;
+}
+
+.btn-card-action.action-secondary:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* ==========================================================================
+   MEDIA QUERIES - RESPONSIVE PARA EL PADRÓN
+   ========================================================================== */
+@media (min-width: 640px) {
+  .families-grid {
+    grid-template-columns: repeat(2, 1fr); /* 2 columnas en tablets */
+  }
+}
+
+@media (min-width: 1024px) {
+  .families-grid {
+    grid-template-columns: repeat(3, 1fr); /* 3 columnas en computadoras */
+  }
+}

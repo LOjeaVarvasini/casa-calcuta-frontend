@@ -1,11 +1,16 @@
-import { createElement, useEffect, useState } from 'react'
-import Login from './pages/Login/Login.jsx'
+import { useEffect, useState } from 'react'
+import Login from './pages/Login/index.jsx'
+import Dashboard from './pages/Dashboard/index.jsx'
+import Sidebar from './components/common/Sidebar.jsx'
+import BottomNav from './components/common/BottomNav.jsx'
 import { logoutRequest, meRequest } from './config/api.js'
 
 function App() {
   const [session, setSession] = useState(null)
   const [booting, setBooting] = useState(true)
+  const [pantallaActual, setPantallaActual] = useState('dashboard')
 
+  // Restaurar la sesión al cargar la app de forma real
   useEffect(() => {
     const restoreSession = async () => {
       const token = localStorage.getItem('access_token')
@@ -30,6 +35,7 @@ function App() {
 
   const handleLogin = ({ accessToken, user }) => {
     setSession({ accessToken, user })
+    setPantallaActual('dashboard') 
   }
 
   const handleLogout = async () => {
@@ -38,50 +44,72 @@ function App() {
         await logoutRequest(session.accessToken)
       }
     } catch {
-      // Si logout falla, limpiamos igual la sesión local.
+      // Limpieza local preventiva si falla el servidor
     } finally {
       localStorage.removeItem('access_token')
       setSession(null)
     }
   }
 
+  const handleNavegar = (pantalla) => {
+    if (pantalla === 'login') {
+      handleLogout()
+    } else {
+      setPantallaActual(pantalla)
+    }
+  }
+
   if (booting) {
     return (
-      <div className="login-wrapper" style={{ placeItems: 'center', justifyContent: 'center' }}>
-        <div className="login-success">Cargando sesión...</div>
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-bg)' }}>
+        <p style={{ fontWeight: 600, color: 'var(--color-primary)', fontFamily: 'sans-serif' }}>Validando sesión...</p>
       </div>
     )
   }
 
   if (!session) {
-    return createElement(Login, { onLogin: handleLogin })
+    return <Login onLoginSuccess={handleLogin} />
   }
 
   return (
-    <main className="login-wrapper" style={{ padding: 'var(--space-lg)' }}>
-      <section className="login-form-panel" style={{ padding: 0 }}>
-        <div className="form-box" style={{ maxWidth: '560px' }}>
-          <header className="form-header" style={{ textAlign: 'left' }}>
-            <div className="brand-badge">CC</div>
-            <h1>Sesión iniciada</h1>
-            <p>Autenticación confirmada contra la API del backend.</p>
-          </header>
+    <div className="app-container">
+      
+      {/* Componente de Navegación Lateral (Su clase interna .app-sidebar la oculta en móvil) */}
+      <Sidebar onNavegar={handleNavegar} pantallaActiva={pantallaActual} />
 
-          <div className="login-success">
-            <strong>Usuario:</strong> {session.user?.name || session.user?.nombre || session.user?.email || 'Autenticado'}
+      {/* Contenedor del Área de Contenido General */}
+      <div className="app-content-area">
+        
+        {/* Cabecera de la Aplicación */}
+        <header className="app-header">
+          <div className="header-title">
+            <h1>
+              {pantallaActual === 'dashboard' && 'Panel Principal'}
+              {pantallaActual === 'familias' && 'Padrón Único de Familias'}
+            </h1>
           </div>
-
-          <div className="login-note" style={{ marginTop: 'var(--space-md)', textAlign: 'left' }}>
-            <code>access_token</code> guardado en localStorage y validado con <code>/api/auth/me</code>.
+          <div style={{ fontSize: '0.875rem', color: '#718096', fontWeight: 500 }}>
+            {session.user?.name || session.user?.nombre || session.user?.email || 'Coordinador'}
           </div>
+        </header>
 
-          <button className="btn-primary" type="button" onClick={handleLogout} style={{ marginTop: 'var(--space-lg)' }}>
-            Cerrar sesión
-          </button>
-        </div>
-      </section>
-    </main>
+        {/* Visor Dinámico de Pantallas con Scroll Controlado */}
+        <main className="main-content">
+          {pantallaActual === 'dashboard' && <Dashboard onNavegar={handleNavegar} />}
+          {pantallaActual === 'familias' && (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <h2>[Próximamente: Componente Padrón de Familias]</h2>
+            </div>
+          )}
+        </main>
+
+      </div>
+
+      {/* Componente de Navegación Inferior (Su clase interna .mobile-nav lo oculta en escritorio) */}
+      <BottomNav onNavegar={handleNavegar} pantallaActiva={pantallaActual} />
+
+    </div>
   )
 }
 
-export default App;
+export default App

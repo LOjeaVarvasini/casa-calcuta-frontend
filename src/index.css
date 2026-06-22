@@ -1,6 +1,10 @@
+/* ==========================================================================
+   SISTEMA DE GESTIÓN INTERNA - CASA CALCUTA (CORE & COMPONENTES BASE)
+   ========================================================================== */
+
 @import './styles/variables.css';
 
-/* Reset Estándar Obligatorio */
+/* 1. RESET ACCESIBLE Y ADAPTATIVO */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -11,20 +15,28 @@ body {
   font-family: var(--font-main);
   background-color: var(--color-bg);
   color: var(--color-text);
-  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+  font-size: var(--text-base);
+  -webkit-text-size-adjust: 100%; /* Evita problemas de zoom en iOS */
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+/* 2. COMPONENTE FORMULARIO: INPUTS ESTÁNDAR (Reutilizable en CRUDs, Asistencia, etc.) */
 .form-group {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
+  margin-bottom: var(--space-md);
   width: 100%;
 }
 
 .form-group label {
-  font-weight: 600;
   font-size: var(--text-sm);
-  color: #4a5568;
+  font-weight: 700;
+  color: var(--color-text);
 }
 
 .form-control,
@@ -32,12 +44,13 @@ body {
 .form-group select,
 .form-group textarea {
   width: 100%;
+  height: 44px; /* Altura ergonómica para tipeo móvil */
+  padding: 0 var(--space-sm);
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md); /* Estética curva unificada */
   font-family: inherit;
   font-size: var(--text-base);
-  padding: 0.75rem var(--space-md);
-  border: 1.5px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background-color: #ffffff;
   color: var(--color-text);
   transition: all 0.2s ease;
 }
@@ -48,9 +61,40 @@ body {
 .form-group textarea:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(30, 93, 136, 0.15);
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(30, 93, 136, 0.15); /* Foco con aura suave */
 }
 
+/* Grilla modular para inputs (Desktop multipropósito / Móvil vertical) */
+.form-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-sm);
+}
+
+/* Divisor estético para separar secciones dentro de un formulario largo */
+.form-divider {
+  border: 0;
+  height: 1px;
+  background-color: var(--color-border);
+  margin: var(--space-lg) 0 var(--space-md) 0;
+}
+
+.form-section-title {
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: var(--space-md);
+}
+
+@media (min-width: 768px) {
+  .form-grid-3 {
+    grid-template-columns: repeat(3, 1fr); /* 3 columnas en pantallas grandes */
+    gap: var(--space-md);
+  }
+}
+
+/* 3. COMPONENTE BOTÓN PRINCIPAL (Reutilizable en todo el sitio) */
 .btn-primary {
   font-family: inherit;
   font-size: var(--text-base);
@@ -61,7 +105,7 @@ body {
   border: none;
   border-radius: var(--radius-md);
   cursor: pointer;
-  min-height: 48px;
+  min-height: 48px; /* Altura mínima recomendada para interacción táctil */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -79,6 +123,14 @@ body {
   transform: translateY(0);
 }
 
+.btn-primary:disabled {
+  background-color: #a0aec0;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* 4. UTILERÍAS / NOTIFICACIONES DE LA API (Aportadas por backend) */
 .brand-badge {
   display: flex;
   align-items: center;
@@ -99,6 +151,8 @@ body {
   color: var(--color-danger);
   border: 1px solid rgba(235, 87, 87, 0.2);
   font-size: var(--text-sm);
+  font-weight: 600;
+  text-align: center;
 }
 
 .login-success {
@@ -108,40 +162,323 @@ body {
   color: var(--color-success);
   border: 1px solid rgba(39, 174, 96, 0.2);
   font-size: var(--text-sm);
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Clases de Badge para prioridades y estados en todo el sistema */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.badge-danger { background-color: #fed7d7; color: #9b2c2c; }
+.badge-warning { background-color: #feebc8; color: #9c4221; }
+.badge-success { background-color: #c6f6d5; color: #22543d; }
+.badge-primary { background-color: #e2e8f0; color: #2d3748; }
+
+/* ==========================================================================
+   ESTRUCTURA GENERAL DEL PANEL (LAYOUT OPERATIVO)
+   ========================================================================== */
+
+/* Contenedor principal de la App */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  width: 100vw;
+  background-color: var(--color-bg);
+}
+
+/* BARRA LATERAL (SIDEBAR) - Por defecto oculta en móvil */
+.app-sidebar {
+  display: none; /* 🍏 OCULTA EN MÓVIL */
+  flex-direction: column;
+  width: 260px;
+  background-color: #10344e; /* Primario oscurecido para contraste */
+  color: #ffffff;
+  padding: var(--space-md);
+  border-right: 1px solid var(--color-border);
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: var(--space-md);
+}
+
+.sidebar-brand {
+  font-weight: 700;
+  font-size: var(--text-md);
+  letter-spacing: -0.5px;
+}
+
+/* Enlaces de navegación */
+.sidebar-nav {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.nav-item a {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: #e2e8f0;
+  text-decoration: none;
+  padding: 0.75rem var(--space-sm);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: var(--text-sm);
+  transition: all 0.2s ease;
+}
+
+.nav-item a:hover, 
+.nav-item.active a {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+/* ÁREA DE CONTENIDO (BARRA SUPERIOR + CONTENIDO VARIABLE) */
+.app-content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* Evita desbordamiento en flexbox */
+  padding-bottom: 60px; /* 🍏 Espacio para que la barra inferior en móvil no tape nada */
+}
+
+/* Barra superior de contexto */
+.app-header {
+  background-color: var(--color-card);
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.header-title h1 {
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.user-info {
+  text-align: right;
+  display: none; /* Se oculta en pantallas chicas */
+}
+
+.user-name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.user-role {
+  font-size: 0.75rem;
+  color: var(--color-primary);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* Contenedor dinámico principal */
+.main-content {
+  flex: 1;
+  padding: var(--space-md);
+  overflow-y: auto;
 }
 
 /* ==========================================================================
-   COMPONENTES CORE REUTILIZABLES (ADAPTADOS PARA JSX)
+   BARRA DE NAVEGACIÓN INFERIOR MOBILE - ENFOQUE FLUIDO (FIXED)
    ========================================================================== */
-
-/* Badges de estado unificados */
-.badge {
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  border-radius: var(--radius-sm);
-  text-transform: uppercase;
-}
-.badge-danger { background-color: #fff5f5; color: var(--color-danger); }
-.badge-warning { background-color: #fffaf0; color: var(--color-secondary); }
-.badge-success { background-color: #f0fff4; color: var(--color-success); }
-.badge-primary { background-color: #ebf8ff; color: var(--color-primary); }
-
-/* Contenedor de Botones Simétricos Clavados a la Derecha */
-.table-actions-cell {
-  display: flex;
-  gap: 6px;
-  justify-content: flex-end;
+.mobile-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px; /* Alineado a los 64px de tu componente */
+  background-color: var(--color-card);
+  border-top: 1px solid var(--color-border);
+  display: flex; /* Activa Flexbox nativo desde el CSS */
+  justify-content: space-around; /* Distribuye los botones simétricamente por la pantalla */
   align-items: center;
+  z-index: 1000;
+  padding: 0 var(--space-xs);
+}
+
+.mobile-nav-item,
+.mobile-nav-dropdown-container {
+  flex: 1; 
+  min-width: 0; 
+  max-width: 25%; 
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #718096;
+  text-decoration: none;
+  font-size: 0.7rem;
+  font-weight: 600;
+  height: 100%;
+  border: none;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: center;
+}
+
+.mobile-nav-item.active,
+.mobile-nav-item:hover {
+  color: var(--color-primary);
+}
+
+.mobile-nav-icon {
+  font-size: 1.25rem;
+  margin-bottom: 2px;
+  display: block;
+}
+
+/* DROPDOWN POP-UP MÓVIL */
+.mobile-nav-dropdown-container {
+  position: relative;
+}
+
+.btn-dropdown-trigger {
+  width: 100%;
+  height: 100%;
+}
+
+.mobile-nav-popup {
+  position: absolute;
+  bottom: 65px; 
+  right: var(--space-xs); 
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
+  display: none; 
+  flex-direction: column;
+  width: 200px;
+  overflow: hidden;
+  z-index: 110;
+}
+
+.mobile-nav-popup a {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 0.9rem var(--space-md);
+  color: var(--color-text);
+  text-decoration: none;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.mobile-nav-popup a:last-child {
+  border-bottom: none;
+}
+
+.btn-dropdown-trigger.open + .mobile-nav-popup {
+  display: flex;
+}
+
+/* ==========================================================================
+   COMPONENTES BASE: SECCIONES OPERATIVAS (FILTROS Y BUSCADORES)
+   ========================================================================== */
+.page-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+  background-color: var(--color-card);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.search-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
   width: 100%;
 }
 
-/* Micro-botón base operativo con área ergonómica mínima (48px de interacción) */
+/* SECCIONES DE INFORMACIÓN DESTACADA */
+.info-profile-box {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ==========================================================================
+   COMPONENTES BASE: TABLAS ADAPTATIVAS Y LÍQUIDAS DESESTRUCTURADAS
+   ========================================================================== */
+.table-responsive-container {
+  width: 100%;
+  overflow-x: auto;
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  -webkit-overflow-scrolling: touch;
+}
+
+.custom-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: var(--text-sm);
+}
+
+.custom-table th {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-weight: 700;
+  padding: var(--space-md);
+  border-bottom: 2px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.custom-table td {
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+  color: #4a5568;
+  vertical-align: middle;
+}
+
+.custom-table tbody tr:hover {
+  background-color: rgba(247, 250, 252, 0.7);
+}
+
 .btn-table-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   background-color: rgba(30, 93, 136, 0.08);
   color: var(--color-primary);
   border: 1px solid rgba(30, 93, 136, 0.15);
@@ -149,9 +486,18 @@ body {
   border-radius: var(--radius-sm);
   font-size: 0.75rem;
   font-weight: 700;
+  text-decoration: none;
   cursor: pointer;
   transition: all 0.15s ease;
-  min-height: 36px;
+  white-space: nowrap;
+  min-height: 32px;
+}
+
+.btn-table-action:hover {
+  background-color: var(--color-primary);
+  color: #ffffff;
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
 }
 
 .btn-table-action.action-danger {
@@ -160,26 +506,255 @@ body {
   border-color: rgba(235, 87, 87, 0.2);
 }
 
-/* ==========================================================================
-   RESPONSIVE LAYOUT FOR NAVIGATION EN REACT
-   ========================================================================== */
-
-/* Por defecto en celulares (Mobile-First) */
-.app-sidebar {
-  display: none !important; /* Oculta la barra de PC en teléfonos */
+.btn-table-action.action-danger:hover {
+  background-color: var(--color-danger);
+  color: #ffffff;
+  border-color: var(--color-danger);
 }
 
-.mobile-nav {
-  display: flex !important;
+.custom-table td:last-child {
+  text-align: right;
+  width: 170px;
 }
 
-/* En pantallas medianas y grandes (Desktop) */
-@media (min-width: 768px) {
-  .app-sidebar {
-    display: flex !important; /* Muestra la barra lateral */
+.table-actions-cell {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+}
+
+/* SELECTORES DE ESTADO BINARIOS (SWITCH PASTILLA) */
+.switch-toggle-group {
+  display: inline-flex;
+  background-color: var(--color-bg);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  width: 100%;
+  max-width: 240px;
+}
+
+.switch-toggle-item {
+  flex: 1;
+  width: 50%;
+  display: flex;
+}
+
+.switch-toggle-item input[type="radio"] {
+  display: none;
+}
+
+.switch-toggle-item label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.5rem var(--space-sm);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 38px;
+  color: #718096;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.switch-toggle-item input[id$="-retirado"]:checked + label {
+  background-color: var(--color-success);
+  color: #ffffff;
+  box-shadow: var(--shadow-sm);
+}
+
+.switch-toggle-item input[id$="-falta"]:checked + label {
+  background-color: var(--color-danger);
+  color: #ffffff;
+  box-shadow: var(--shadow-sm);
+}
+
+/* COMPORTAMIENTO LÍQUIDO CRÍTICO PARA CELULARES (ANTI-SCROLL MÓVIL) */
+@media (max-width: 767px) {
+  .custom-table-responsive, 
+  .custom-table-responsive tbody, 
+  .custom-table-responsive tr, 
+  .custom-table-responsive td {
+    display: block;
+    width: 100%;
   }
-  
+
+  .custom-table-responsive thead {
+    display: none;
+  }
+
+  .custom-table-responsive tr {
+    margin-bottom: var(--space-md);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-card);
+    padding: var(--space-xs) 0;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .custom-table-responsive td {
+    text-align: right;
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .custom-table-responsive td:last-child {
+    border-bottom: none;
+  }
+
+  .custom-table-responsive td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: var(--color-text);
+    text-align: left;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .custom-table-responsive td[data-label="Acciones"] {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+
+  .custom-table-responsive td[data-label="Acciones"] .table-actions-cell {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    width: auto;
+  }
+}
+
+/* ==========================================================================
+   COMPONENTES BASE: POP-UPS DE ALERTA Y VENTANAS MODALES
+   ========================================================================== */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(45, 55, 72, 0.6);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+  z-index: 2000;
+}
+
+.modal-box {
+  background-color: var(--color-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  width: 100%;
+  max-width: 480px;
+  overflow: hidden;
+  animation: modalScaleIn 0.2s ease-out;
+}
+
+.modal-header {
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.modal-header.alert-danger {
+  background-color: #fff5f5;
+  color: var(--color-danger);
+}
+
+.modal-header h3 {
+  font-size: var(--text-md);
+  font-weight: 700;
+  margin: 0;
+}
+
+.modal-body {
+  padding: var(--space-md);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.modal-footer {
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}
+
+@keyframes modalScaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* ==========================================================================
+   INTERRUPTOR DE INTERFAZ: MEDIA QUERIES PARA ESCRITORIO (Tablets en adelante)
+   ========================================================================== */
+@media (min-width: 768px) {
+  .app-container {
+    flex-direction: row; /* 🍏 Cambia la orientación a horizontal para Sidebar + Panel */
+  }
+
+  .app-sidebar {
+    display: flex; /* 🍏 PRENDE LA SIDEBAR EN PC */
+  }
+
   .mobile-nav {
-    display: none !important; /* Oculta la botonera de celular */
+    display: none !important; /* 🍏 APAGA POR COMPLETO LA BARRA INFERIOR EN PC */
+  }
+
+  .app-content-area {
+    padding-bottom: 0; /* 🍏 Quita el aire inferior en PC porque ya no está la barra fija */
+  }
+
+  .user-info {
+    display: block;
+  }
+
+  .app-header {
+    padding: 0 var(--space-lg);
+  }
+
+  .main-content {
+    padding: var(--space-lg);
+  }
+
+  .header-title h1 {
+    font-size: var(--text-lg);
+  }
+
+  .page-toolbar {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .search-filter-group {
+    flex-direction: row;
+    width: auto;
+    flex: 1;
+    max-width: 600px;
+  }
+
+  .info-profile-box {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-lg);
   }
 }
