@@ -1,11 +1,9 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import './styles/variables.css'  // 1. Primero cargamos los colores y espaciados
-import './index.css'             // 2. Segundo cargamos tu base.css (con los inputs y botones)
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './styles/variables.css'
+import './index.css'
 import App from './App.jsx'
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
+createRoot(document.getElementById('root')).render(
+  createElement(StrictMode, null, createElement(App)),
 )

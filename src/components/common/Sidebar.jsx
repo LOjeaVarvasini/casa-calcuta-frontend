@@ -1,11 +1,16 @@
 import React from 'react';
 
 function Sidebar({ onNavegar, pantallaActiva }) {
-  // Función utilitaria para aplicar estilos al botón activo
   const obtenerEstiloItem = (nombre) => ({
-    display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', padding: 'var(--space-sm)',
-    borderRadius: 'var(--radius-sm)', color: 'var(--color-text)', textDecoration: 'none', 
-    fontWeight: 600, cursor: 'pointer',
+    display: 'flex', 
+    alignItems: 'center', 
+    gap: 'var(--space-sm)', 
+    padding: 'var(--space-sm)',
+    borderRadius: 'var(--radius-sm)', 
+    color: 'var(--color-text)', 
+    textDecoration: 'none', 
+    fontWeight: 600, 
+    cursor: 'pointer',
     backgroundColor: pantallaActiva === nombre ? 'rgba(30, 93, 136, 0.08)' : 'transparent'
   });
 
@@ -24,10 +29,12 @@ function Sidebar({ onNavegar, pantallaActiva }) {
 
       <nav style={{ flex: 1 }}>
         <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+          <li onClick={() => onNavegar('dashboard')}>
+            <span style={obtenerEstiloItem('dashboard')}><span>📊</span> Panel Principal</span>
+          </li>
           <li onClick={() => onNavegar('familias')}>
             <span style={obtenerEstiloItem('familias')}><span>👥</span> Gestión de Familias</span>
           </li>
-          {/* Botón de escape estético para volver al Login */}
           <li onClick={() => onNavegar('login')} style={{ marginTop: 'auto' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', padding: 'var(--space-sm)', color: 'var(--color-danger)', cursor: 'pointer', fontWeight: 600 }}>
               <span>🚪</span> Cerrar Sesión

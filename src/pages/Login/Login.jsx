@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { loginRequest, meRequest } from '../../config/api.js'
-import './login.css'
+import './Login.css'
 
 const initialForm = {
   email: 'admin@example.com',
   password: 'password',
 }
 
-function Login({ onLoginSuccess }) {
+function Login({ onLogin }) {
   const [form, setForm] = useState(initialForm)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -42,11 +42,10 @@ function Login({ onLoginSuccess }) {
         const meResponse = await meRequest(accessToken)
         user = meResponse.user || meResponse.data || meResponse
       } catch {
-        // Si /auth/me falla, mantenemos la sesión con el token local
+        // Si /auth/me falla, mantenemos la sesión con el token.
       }
 
-      // Ejecuta la función del orquestador global (App.jsx) pasándole las credenciales reales
-      onLoginSuccess({ accessToken, user })
+      onLogin({ accessToken, user })
     } catch (loginError) {
       setError(loginError.message || 'No se pudo iniciar sesión')
     } finally {
@@ -56,78 +55,70 @@ function Login({ onLoginSuccess }) {
 
   return (
     <main className="login-wrapper">
-      
-      {/* PANEL ADAPTATIVO IZQUIERDO/SUPERIOR */}
       <section className="login-side-panel">
         <div className="panel-content">
-          <span className="panel-tag">Proyecto Comunitario</span>
+          <span className="panel-tag">Proyecto comunitario</span>
           <h2>Casa Calcuta</h2>
-          <p>Transformando la incertidumbre en control operativo para acompañar mejor a cada familia.</p>
+          <p>Gestión interna, asistencia y seguimiento de familias desde una interfaz clara y mobile-first.</p>
         </div>
         <div className="panel-decoration" aria-hidden="true">
-          <div className="circle-1"></div>
-          <div className="circle-2"></div>
+          <div className="circle-1" />
+          <div className="circle-2" />
         </div>
       </section>
 
-      {/* PANEL DEL FORMULARIO DE ACCESO */}
       <section className="login-form-panel">
         <div className="form-box">
-          
           <header className="form-header">
             <div className="brand-badge">CC</div>
-            <h1>¡Hola! Te damos la bienvenida</h1>
-            <p>Ingresá tus credenciales para acceder al panel de gestión.</p>
+            <h1>Ingresar al sistema</h1>
+            <p>Usá tus credenciales para autenticarte con la API del backend.</p>
           </header>
 
           <form className="custom-form" onSubmit={handleSubmit}>
-  
             <div className="form-group">
-              <label htmlFor="email">Usuario o Correo</label>
-              <input 
-                type="email" 
-                id="email" 
-                name="email" 
-                placeholder="usuario.apellido@example.com" 
+              <label htmlFor="email">Usuario o correo</label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="admin@example.com"
+                autoComplete="username"
                 value={form.email}
                 onChange={handleChange}
                 required
-                autoComplete="username"
               />
             </div>
 
             <div className="form-group">
               <label htmlFor="password">Contraseña</label>
-              <input 
-                type="password" 
-                id="password" 
-                name="password" 
-                placeholder="••••••••" 
+              <input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="••••••••"
+                autoComplete="current-password"
                 value={form.password}
                 onChange={handleChange}
                 required
-                autoComplete="current-password"
               />
             </div>
 
-            {/* Muestra el error de la API si la autenticación falla */}
             {error ? <div className="login-error">{error}</div> : null}
 
-            <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? 'Validando...' : 'Iniciar Sesión'}
+            <button className="btn-primary" type="submit" disabled={loading}>
+              {loading ? 'Validando...' : 'Iniciar sesión'}
             </button>
-            
+
           </form>
 
           <footer className="form-footer">
-            <p>Gestión de Proyectos [Año] &bull; [Institución]</p>
+            <p>Casa Calcuta · Frontend React</p>
           </footer>
-
         </div>
       </section>
-
     </main>
-  );
+  )
 }
 
-export default Login;
+export default Login

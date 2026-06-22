@@ -1,9 +1,16 @@
+<<<<<<< HEAD
 /* ==========================================================================
    SISTEMA DE GESTIÓN MERENDEROS - CORE & COMPONENTES BASE
    ========================================================================== */
 
 /* 1. RESET ACCESIBLE Y ADAPTATIVO */
 * {
+=======
+@import './styles/variables.css';
+
+/* Reset Estándar Obligatorio */
+*, *::before, *::after {
+>>>>>>> production
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -18,8 +25,127 @@ body {
   -webkit-text-size-adjust: 100%; /* Evita problemas de zoom en iOS [cite: 830] */
 }
 
+<<<<<<< HEAD
 /* 2. COMPONENTE FORMULARIO: INPUTS ESTÁNDAR (Reutilizable en CRUDs, Asistencia, etc.) */
 .form-group {
+=======
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  width: 100%;
+}
+
+.form-group label {
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: #4a5568;
+}
+
+.form-control,
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  font-family: inherit;
+  font-size: var(--text-base);
+  padding: 0.75rem var(--space-md);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: #ffffff;
+  color: var(--color-text);
+  transition: all 0.2s ease;
+}
+
+.form-control:focus,
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(30, 93, 136, 0.15);
+}
+
+.btn-primary {
+  font-family: inherit;
+  font-size: var(--text-base);
+  font-weight: 600;
+  background-color: var(--color-primary);
+  color: #ffffff;
+  padding: 0.75rem var(--space-lg);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px rgba(30, 93, 136, 0.15);
+}
+
+.btn-primary:hover {
+  background-color: #154261;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 8px rgba(30, 93, 136, 0.2);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.brand-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background-color: rgba(30, 93, 136, 0.1);
+  color: var(--color-primary);
+  font-weight: 700;
+  font-size: var(--text-md);
+  border-radius: var(--radius-md);
+}
+
+.login-error {
+  padding: 0.875rem 1rem;
+  border-radius: var(--radius-md);
+  background: #fff5f5;
+  color: var(--color-danger);
+  border: 1px solid rgba(235, 87, 87, 0.2);
+  font-size: var(--text-sm);
+}
+
+.login-success {
+  padding: 0.875rem 1rem;
+  border-radius: var(--radius-md);
+  background: #f0fff4;
+  color: var(--color-success);
+  border: 1px solid rgba(39, 174, 96, 0.2);
+  font-size: var(--text-sm);
+}
+
+/* ==========================================================================
+   COMPONENTES CORE REUTILIZABLES (ADAPTADOS PARA JSX)
+   ========================================================================== */
+
+/* Badges de estado unificados */
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+}
+.badge-danger { background-color: #fff5f5; color: var(--color-danger); }
+.badge-warning { background-color: #fffaf0; color: var(--color-secondary); }
+.badge-success { background-color: #f0fff4; color: var(--color-success); }
+.badge-primary { background-color: #ebf8ff; color: var(--color-primary); }
+
+/* Contenedor de Botones Simétricos Clavados a la Derecha */
+.table-actions-cell {
+>>>>>>> production
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);

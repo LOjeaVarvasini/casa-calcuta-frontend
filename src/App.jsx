@@ -1,144 +1,117 @@
-// src/App.jsx (Código modificado)
-
-import React, { useState } from 'react';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Familias from './pages/Familias'; // <-- NUEVA IMPORTACIÓN
+import { useEffect, useState } from 'react'
+import Login from './pages/Login/index.jsx'
+import Dashboard from './pages/Dashboard/index.jsx'
+import Sidebar from './components/common/Sidebar.jsx'
+import BottomNav from './components/common/BottomNav.jsx'
+import { logoutRequest, meRequest } from './config/api.js'
 
 function App() {
-  const [pantallaActual, setPantallaActual] = useState('login');
-  const [menuMasAbierto, setMenuMasAbierto] = useState(false);
+  const [session, setSession] = useState(null)
+  const [booting, setBooting] = useState(true)
+  const [pantallaActual, setPantallaActual] = useState('dashboard')
 
-  if (pantallaActual === 'login') {
-    return <Login onLoginSuccess={() => setPantallaActual('dashboard')} />;
+  // Restaurar la sesión al cargar la app de forma real
+  useEffect(() => {
+    const restoreSession = async () => {
+      const token = localStorage.getItem('access_token')
+
+      if (!token) {
+        setBooting(false)
+        return
+      }
+
+      try {
+        const response = await meRequest(token)
+        setSession({ accessToken: token, user: response.user || response.data || response })
+      } catch {
+        localStorage.removeItem('access_token')
+      } finally {
+        setBooting(false)
+      }
+    }
+
+    restoreSession()
+  }, [])
+
+  const handleLogin = ({ accessToken, user }) => {
+    setSession({ accessToken, user })
+    setPantallaActual('dashboard') // Al loguearse va directo al panel
   }
 
-  return (
-    <div className="app-container">
-      
-      {/* BARRA LATERAL DESKTOP (SIDEBAR) */}
-      <aside className="app-sidebar">
-        <div className="sidebar-header">
-          <div className="brand-badge">CC</div>
-          <span className="sidebar-brand">Casa Calcuta</span>
-        </div>
-        <nav>
-          <ul className="sidebar-nav">
-            <li className={`nav-item ${pantallaActual === 'dashboard' ? 'active' : ''}`}>
-              <a href="#dashboard" onClick={(e) => { e.preventDefault(); setPantallaActual('dashboard'); }}>
-                <span>📊</span> Panel Principal
-              </a>
-            </li>
-            <li className={`nav-item ${pantallaActual === 'familias' ? 'active' : ''}`}>
-              <a href="#familias" onClick={(e) => { e.preventDefault(); setPantallaActual('familias'); }}>
-                <span>👥</span> Gestión de Familias
-              </a>
-            </li>
-            <li className="nav-item"><a href="#asistencia"><span>📋</span> Registrar Asistencia</a></li>
-            <li className="nav-item"><a href="#listas"><span>⏳</span> Listas de Espera</a></li>
-            <li className="nav-item"><a href="#donaciones"><span>📦</span> Donaciones</a></li>
-            <li className="nav-item"><a href="#usuarios"><span>⚙️</span> Administración</a></li>
-          </ul>
-        </nav>
-      </aside>
+  const handleLogout = async () => {
+    try {
+      if (session?.accessToken) {
+        await logoutRequest(session.accessToken)
+      }
+    } catch {
+      // Si el servidor falla, limpiamos igual localmente
+    } finally {
+      localStorage.removeItem('access_token')
+      setSession(null)
+    }
+  }
 
-      {/* ÁREA DE CONTENIDO VARIABLE */}
-      <div className="app-content-area">
+  // Manejador del ruteador estético interno
+  const handleNavegar = (pantalla) => {
+    if (pantalla === 'login') {
+      handleLogout()
+    } else {
+      setPantallaActual(pantalla)
+    }
+  }
+
+  // Pantalla de carga mientras valida el token
+  if (booting) {
+    return (
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-bg)' }}>
+        <p style={{ fontWeight: 600, color: 'var(--color-primary)' }}>Validando sesión...</p>
+      </div>
+    )
+  }
+
+  // Guardián de Autenticación: Si no hay sesión, se muestra el Login real
+  if (!session) {
+    return <Login onLoginSuccess={() => handleLogin} />
+  }
+
+  // Si hay sesión, renderiza la APP con tu diseño adaptativo estructural
+  return (
+    <div className="app-container" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'row' }}>
+      
+      {/* Componente de Navegación Lateral (Escritorio) */}
+      <Sidebar onNavegar={handleNavegar} pantallaActiva={pantallaActual} />
+
+      {/* Contenedor de Vistas */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingBottom: '64px' }}>
         
-        <header className="app-header">
-          <div className="header-title">
-            <h1>
-              {pantallaActual === 'dashboard' && 'Panel Principal'}
-              {pantallaActual === 'familias' && 'Padrón Único de Familias'}
-              {pantallaActual === 'integrantes' && 'Ficha de Integrantes'} {/* <-- Título dinámico para la pantalla puente */}
-              {pantallaActual === 'listas' && 'Listas de Espera'}
-            </h1>
-          </div>
-          <div className="user-profile">
-            <div className="user-info">
-              <p className="user-name">Regina Álvarez</p>
-              <p className="user-role">Coordinador</p>
-            </div>
-            <div className="brand-badge" style={{ width: '40px', height: '40px', borderRadius: '50%' }}>RA</div>
-          </div>
+        {/* Cabecera de la Aplicación */}
+        <header className="app-header" style={{ padding: '24px', background: 'var(--color-card)', borderBottom: '1px solid var(--color-border)' }}>
+          <h1 style={{ color: 'var(--color-primary)', fontSize: '1.5rem', fontWeight: 800, margin: 0 }}>
+            {pantallaActual === 'dashboard' && 'Panel Principal'}
+            {pantallaActual === 'familias' && 'Padrón Único de Familias'}
+          </h1>
+          <p style={{ color: '#718096', fontSize: '0.875rem', marginTop: '4px', margin: 0 }}>
+            Hola, {session.user?.name || session.user?.nombre || 'Coordinador'} · Rol: [Rol]
+          </p>
         </header>
 
-        <main className="main-content">
-          {pantallaActual === 'dashboard' && (
-            <Dashboard onNavegar={(destino) => setPantallaActual(destino)} />
-          )}
-
-          {/* CÓDIGO CORREGIDO: Se reemplaza el placeholder por el componente real */}
+        {/* Visor Dinámico de Pantallas */}
+        <main style={{ flex: 1, padding: 'var(--space-md)' }}>
+          {pantallaActual === 'dashboard' && <Dashboard onNavegar={handleNavegar} />}
           {pantallaActual === 'familias' && (
-            <Familias onVerFicha={() => setPantallaActual('integrantes')} />
-          )}
-
-          {/* Pantalla puente para "Ver ficha" (ya existente, se mantiene igual) */}
-          {pantallaActual === 'integrantes' && (
-            <div className="info-profile-box" style={{ display: 'block' }}>
-              <h2>Ficha de Integrantes de la Familia</h2>
-              <p style={{ color: '#718096', marginTop: '10px' }}>Pantalla puente para simular el flujo interno.</p>
-              <button className="btn-table-action" onClick={() => setPantallaActual('familias')} style={{ marginTop: '20px' }}>
-                ⬅️ Volver al Padrón
-              </button>
-            </div>
-          )}
-
-          {pantallaActual === 'listas' && (
-            <div className="info-profile-box" style={{ display: 'block' }}>
-              <h2>Módulo: Listas de Espera</h2>
-              <p style={{ color: '#718096', marginTop: '10px' }}>Pantalla en desarrollo para el próximo incremento.</p>
-              <button className="btn-table-action" onClick={() => setPantallaActual('dashboard')} style={{ marginTop: '20px' }}>
-                ⬅️ Volver al Panel
-              </button>
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <h2>[Próximamente: Componente Padrón de Familias]</h2>
             </div>
           )}
         </main>
+
       </div>
 
-      {/* BARRA DE NAVEGACIÓN INFERIOR MOBILE */}
-      <nav className="mobile-nav">
-        <button 
-          className={`mobile-nav-item ${pantallaActual === 'dashboard' ? 'active' : ''}`}
-          onClick={() => { setPantallaActual('dashboard'); setMenuMasAbierto(false); }}
-        >
-          <span className="mobile-nav-icon">📊</span>Panel
-        </button>
-        
-        <button 
-          className={`mobile-nav-item ${pantallaActual === 'familias' ? 'active' : ''}`}
-          onClick={() => { setPantallaActual('familias'); setMenuMasAbierto(false); }}
-        >
-          <span className="mobile-nav-icon">👥</span>Familias
-        </button>
-        
-        <button className="mobile-nav-item" onClick={() => setMenuMasAbierto(false)}>
-          <span className="mobile-nav-icon">📋</span>Asistencia
-        </button>
-        
-        <div className="mobile-nav-dropdown-container">
-          <button 
-            className={`mobile-nav-item btn-dropdown-trigger ${menuMasAbierto ? 'open' : ''}`} 
-            onClick={() => setMenuMasAbierto(!menuMasAbierto)}
-          >
-            <span className="mobile-nav-icon">➕</span>Más
-          </button>
-          <div className="mobile-nav-popup">
-            <a href="#listas" onClick={(e) => { e.preventDefault(); setPantallaActual('listas'); setMenuMasAbierto(false); }}>
-              <span>⏳</span> Listas de Espera
-            </a>
-            <a href="#donaciones" onClick={(e) => { e.preventDefault(); setMenuMasAbierto(false); }}>
-              <span>📦</span> Donaciones
-            </a>
-            <a href="#login" onClick={(e) => { e.preventDefault(); setPantallaActual('login'); setMenuMasAbierto(false); }}>
-              <span>⚙️</span> Salir del Sistema
-            </a>
-          </div>
-        </div>
-      </nav>
+      {/* Componente de Navegación Inferior (Mobile) */}
+      <BottomNav onNavegar={handleNavegar} pantallaActiva={pantallaActual} />
 
     </div>
-  );
+  )
 }
 
-export default App;
+export default App

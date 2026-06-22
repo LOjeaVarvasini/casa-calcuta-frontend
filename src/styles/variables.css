@@ -16,6 +16,11 @@
 
   /* Tipografía de Sistema Uniforme (Eficiencia en Redes Inestables) */
   --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.125rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
 
   /* Escala de Espaciados Ergonómicos */
   --space-xs: 0.5rem;   /* 8px */
