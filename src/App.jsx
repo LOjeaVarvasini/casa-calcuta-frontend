@@ -35,7 +35,7 @@ function App() {
 
   const handleLogin = ({ accessToken, user }) => {
     setSession({ accessToken, user })
-    setPantallaActual('dashboard') // Al loguearse va directo al panel
+    setPantallaActual('dashboard') 
   }
 
   const handleLogout = async () => {
@@ -44,14 +44,13 @@ function App() {
         await logoutRequest(session.accessToken)
       }
     } catch {
-      // Si el servidor falla, limpiamos igual localmente
+      // Limpieza local preventiva si falla el servidor
     } finally {
       localStorage.removeItem('access_token')
       setSession(null)
     }
   }
 
-  // Manejador del ruteador estético interno
   const handleNavegar = (pantalla) => {
     if (pantalla === 'login') {
       handleLogout()
@@ -60,43 +59,42 @@ function App() {
     }
   }
 
-  // Pantalla de carga mientras valida el token
   if (booting) {
     return (
       <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-bg)' }}>
-        <p style={{ fontWeight: 600, color: 'var(--color-primary)' }}>Validando sesión...</p>
+        <p style={{ fontWeight: 600, color: 'var(--color-primary)', fontFamily: 'sans-serif' }}>Validando sesión...</p>
       </div>
     )
   }
 
-  // Guardián de Autenticación: Si no hay sesión, se muestra el Login real
   if (!session) {
-    return <Login onLoginSuccess={() => handleLogin} />
+    return <Login onLoginSuccess={handleLogin} />
   }
 
-  // Si hay sesión, renderiza la APP con tu diseño adaptativo estructural
   return (
-    <div className="app-container" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'row' }}>
+    <div className="app-container">
       
-      {/* Componente de Navegación Lateral (Escritorio) */}
+      {/* Componente de Navegación Lateral (Su clase interna .app-sidebar la oculta en móvil) */}
       <Sidebar onNavegar={handleNavegar} pantallaActiva={pantallaActual} />
 
-      {/* Contenedor de Vistas */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingBottom: '64px' }}>
+      {/* Contenedor del Área de Contenido General */}
+      <div className="app-content-area">
         
         {/* Cabecera de la Aplicación */}
-        <header className="app-header" style={{ padding: '24px', background: 'var(--color-card)', borderBottom: '1px solid var(--color-border)' }}>
-          <h1 style={{ color: 'var(--color-primary)', fontSize: '1.5rem', fontWeight: 800, margin: 0 }}>
-            {pantallaActual === 'dashboard' && 'Panel Principal'}
-            {pantallaActual === 'familias' && 'Padrón Único de Familias'}
-          </h1>
-          <p style={{ color: '#718096', fontSize: '0.875rem', marginTop: '4px', margin: 0 }}>
-            Hola, {session.user?.name || session.user?.nombre || 'Coordinador'} · Rol: [Rol]
-          </p>
+        <header className="app-header">
+          <div className="header-title">
+            <h1>
+              {pantallaActual === 'dashboard' && 'Panel Principal'}
+              {pantallaActual === 'familias' && 'Padrón Único de Familias'}
+            </h1>
+          </div>
+          <div style={{ fontSize: '0.875rem', color: '#718096', fontWeight: 500 }}>
+            {session.user?.name || session.user?.nombre || session.user?.email || 'Coordinador'}
+          </div>
         </header>
 
-        {/* Visor Dinámico de Pantallas */}
-        <main style={{ flex: 1, padding: 'var(--space-md)' }}>
+        {/* Visor Dinámico de Pantallas con Scroll Controlado */}
+        <main className="main-content">
           {pantallaActual === 'dashboard' && <Dashboard onNavegar={handleNavegar} />}
           {pantallaActual === 'familias' && (
             <div style={{ textAlign: 'center', padding: '40px' }}>
@@ -107,7 +105,7 @@ function App() {
 
       </div>
 
-      {/* Componente de Navegación Inferior (Mobile) */}
+      {/* Componente de Navegación Inferior (Su clase interna .mobile-nav lo oculta en escritorio) */}
       <BottomNav onNavegar={handleNavegar} pantallaActiva={pantallaActual} />
 
     </div>

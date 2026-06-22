@@ -16,8 +16,13 @@ function Sidebar({ onNavegar, pantallaActiva }) {
 
   return (
     <aside className="app-sidebar" style={{
-      width: '260px', backgroundColor: 'var(--color-card)', borderRight: '1px solid var(--color-border)',
-      height: '100vh', position: 'sticky', top: 0, display: 'flex', flexDirection: 'column', padding: 'var(--space-md)'
+      width: '260px', 
+      backgroundColor: 'var(--color-card)', 
+      borderRight: '1px solid var(--color-border)',
+      height: '100vh', 
+      position: 'sticky', 
+      top: 0, 
+      padding: 'var(--space-md)'
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-xl)' }}>
         <div style={{
@@ -28,7 +33,7 @@ function Sidebar({ onNavegar, pantallaActiva }) {
       </div>
 
       <nav style={{ flex: 1 }}>
-        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)', padding: 0 }}>
           <li onClick={() => onNavegar('dashboard')}>
             <span style={obtenerEstiloItem('dashboard')}><span>📊</span> Panel Principal</span>
           </li>

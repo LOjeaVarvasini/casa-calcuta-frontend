@@ -3,29 +3,28 @@
    ========================================================================== */
 
 /* ==========================================================================
-   COMPONENTES DEL DASHBOARD: ALERTAS ULTRA-RESPONSIVE
+   COMPONENTES DEL DASHBOARD: ALERTAS ADAPTATIVAS (MOBILE-FIRST)
    ========================================================================== */
 
-/* --- COMPORTAMIENTO POR DEFECTO: MÓVIL (Compacto, 50/50 horizontal) --- */
+/* --- COMPORTAMIENTO POR DEFECTO: MÓVIL (Apilado Vertical Natural) --- */
 .dashboard-alerts-section {
   display: flex;
+  flex-direction: column; /* Apiladas en vertical para pantallas angostas */
   width: 100%;
-  gap: var(--space-sm);
+  gap: var(--space-md);
   margin-bottom: var(--space-lg);
 }
 
 .alert-card {
-  flex: 1; /* Mitad de pantalla para cada una horizontalmente */
+  width: 100%;
   background-color: var(--color-card);
   border-radius: var(--radius-md);
-  padding: 0.65rem var(--space-xs); /* Compacto para que entre en una línea */
+  padding: var(--space-md);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-sm);
+  align-items: flex-start;
+  gap: var(--space-md);
   box-shadow: var(--shadow-sm);
-  border-left: 4px solid var(--color-border);
-  min-height: 44px;
+  border-left: 5px solid var(--color-border);
 }
 
 .alert-danger {
@@ -39,30 +38,32 @@
 }
 
 .alert-icon {
-  font-size: var(--text-md);
+  font-size: var(--text-xl);
+  line-height: 1;
 }
 
 .alert-body {
+  flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
 }
 
 /* Visibilidad de los textos en MÓVIL */
 .text-desktop {
-  display: none; /* Apagamos por completo la descripción larga */
+  display: none; /* Ocultamos la descripción pesada en pantallas táctiles */
 }
 
 .text-mobile {
-  display: block; /* Prendemos el texto corto */
+  display: block;
 }
 
 .alert-text-mini {
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   font-weight: 700;
-  white-space: nowrap;
+  color: var(--color-text);
 }
 
-/* En móvil ocultamos el botón "Gestionar/Ver" lateral para que no rompa la línea */
+/* En celular ocultamos la acción lateral para dar espacio */
 .alert-card .alert-action {
   display: none; 
 }
@@ -71,49 +72,47 @@
 /* --- COMPORTAMIENTO PARA ESCRITORIO (Tablets en adelante) --- */
 @media (min-width: 768px) {
   .dashboard-alerts-section {
-    flex-direction: row; /* Mantienen la línea pero con más espacio */
+    flex-direction: row; /* Cambia a horizontal solo si hay espacio en pantalla */
     gap: var(--space-md);
-    max-width: 100%; /* Que usen el ancho del panel desktop */
   }
 
   .alert-card {
-    padding: var(--space-md); /* Recupera el aire y protagonismo de antes */
-    justify-content: flex-start; /* Alinea los elementos al inicio */
-    min-height: auto;
-    border-left-width: 5px;
+    flex: 1; /* Toman el 50% del ancho cada una */
+    padding: var(--space-md);
+    align-items: center;
   }
 
   .alert-icon {
-    font-size: var(--text-xl); /* Icono más imponente */
+    font-size: var(--text-xl);
   }
 
   .alert-body {
-    flex: 1;
     align-items: flex-start;
   }
 
-  /* SUICHE DE TEXTOS: Cambiamos la visibilidad en ESCRITORIO */
+  /* INTERRUPTOR DE TEXTOS: Visibilidad en PC */
   .text-desktop {
-    display: block; /* Reaparece el título H3 y el párrafo detallado */
+    display: block;
   }
 
   .text-desktop h3 {
     font-size: var(--text-sm);
     font-weight: 700;
     color: var(--color-text);
-    margin-bottom: 2px;
+    margin: 0 0 2px 0;
   }
 
   .text-desktop p {
     font-size: var(--text-sm);
     color: #4a5568;
+    margin: 0;
   }
 
   .text-mobile {
-    display: none; /* Apagamos el texto resumido */
+    display: none;
   }
 
-  /* Volvemos a mostrar el botón interactivo de la derecha */
+  /* Recuperamos el botón interactivo de la derecha */
   .alert-card .alert-action {
     display: inline-flex;
     font-size: var(--text-sm);
@@ -124,6 +123,7 @@
     border: 1.5px solid var(--color-primary);
     border-radius: var(--radius-sm);
     transition: all 0.2s ease;
+    white-space: nowrap;
   }
 
   .alert-card .alert-action:hover {
@@ -132,17 +132,12 @@
   }
 }
 
-@media (min-width: 1200px) {
-  /* En pantallas ultra anchas, si las dos alertas juntas se estiran mucho, podés darles una grilla base */
-  .alert-card {
-    flex: 1;
-  }
-}
-
-/* 2. GRILLA DE INDICADORES / MÉTRICAS */
+/* ==========================================================================
+   2. GRILLA DE INDICADORES / MÉTRICAS
+   ========================================================================== */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 1fr; /* Una columna en móvil */
+  grid-template-columns: 1fr; /* Una columna por defecto en celular */
   gap: var(--space-md);
 }
 
@@ -187,74 +182,15 @@
   margin-top: 2px;
 }
 
-/* Responsive para tabletas y computadoras */
+/* Escalamiento paulatino de las cajas métricas */
 @media (min-width: 576px) {
   .dashboard-grid {
-    grid-template-columns: repeat(2, 1fr); /* 2 columnas en pantallas intermedias */
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (min-width: 992px) {
   .dashboard-grid {
-    grid-template-columns: repeat(3, 1fr); /* 3 columnas en pantallas grandes */
+    grid-template-columns: repeat(3, 1fr);
   }
-  .dashboard-alerts-section {
-    flex-direction: row; /* Alertas una al lado de la otra en pantallas grandes */
-  }
-  .alert-card {
-    flex: 1;
-  }
-}
-
-/* ==========================================================================
-   AGREGADO PARA COMPONENTE DROPDOWN MENÚ MÓVIL
-   ========================================================================== */
-
-.mobile-nav-dropdown-container {
-  position: relative;
-}
-
-/* Botón disparador nativo sin bordes feos */
-.btn-dropdown-trigger {
-  background: none;
-  border: none;
-  font-family: inherit;
-  cursor: pointer;
-}
-
-/* Ventana emergente flotante (Pop-up hacia arriba) */
-.mobile-nav-popup {
-  position: absolute;
-  bottom: 70px; /* Se eleva justo por encima de la barra inferior */
-  right: -10px;
-  background-color: var(--color-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
-  display: none; /* Oculto por defecto */
-  flex-direction: column;
-  width: 180px;
-  overflow: hidden;
-  z-index: 20;
-}
-
-.mobile-nav-popup a {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: 0.85rem var(--space-md);
-  color: var(--color-text);
-  text-decoration: none;
-  font-size: var(--text-sm);
-  font-weight: 500;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.mobile-nav-popup a:last-child {
-  border-bottom: none;
-}
-
-/* El truco con CSS: si el botón tiene la clase 'open', muestra el popup */
-.btn-dropdown-trigger.open + .mobile-nav-popup {
-  display: flex;
 }

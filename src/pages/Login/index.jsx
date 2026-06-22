@@ -42,10 +42,9 @@ function Login({ onLoginSuccess }) {
         const meResponse = await meRequest(accessToken)
         user = meResponse.user || meResponse.data || meResponse
       } catch {
-        // Si /auth/me falla, mantenemos la sesión con el token local
+        // Mantenemos sesión con token local
       }
 
-      // Ejecuta la función del orquestador global (App.jsx) pasándole las credenciales reales
       onLoginSuccess({ accessToken, user })
     } catch (loginError) {
       setError(loginError.message || 'No se pudo iniciar sesión')
@@ -56,8 +55,6 @@ function Login({ onLoginSuccess }) {
 
   return (
     <main className="login-wrapper">
-      
-      {/* PANEL ADAPTATIVO IZQUIERDO/SUPERIOR */}
       <section className="login-side-panel">
         <div className="panel-content">
           <span className="panel-tag">Proyecto Comunitario</span>
@@ -70,10 +67,8 @@ function Login({ onLoginSuccess }) {
         </div>
       </section>
 
-      {/* PANEL DEL FORMULARIO DE ACCESO */}
       <section className="login-form-panel">
         <div className="form-box">
-          
           <header className="form-header">
             <div className="brand-badge">CC</div>
             <h1>¡Hola! Te damos la bienvenida</h1>
@@ -81,7 +76,6 @@ function Login({ onLoginSuccess }) {
           </header>
 
           <form className="custom-form" onSubmit={handleSubmit}>
-  
             <div className="form-group">
               <label htmlFor="email">Usuario o Correo</label>
               <input 
@@ -110,24 +104,20 @@ function Login({ onLoginSuccess }) {
               />
             </div>
 
-            {/* Muestra el error de la API si la autenticación falla */}
             {error ? <div className="login-error">{error}</div> : null}
 
             <button type="submit" className="btn-primary" disabled={loading}>
               {loading ? 'Validando...' : 'Iniciar Sesión'}
             </button>
-            
           </form>
 
           <footer className="form-footer">
-            <p>Gestión de Proyectos [Año] &bull; [Institución]</p>
+            <p>Gestión de Proyectos 2026 &bull; UNNOBA</p>
           </footer>
-
         </div>
       </section>
-
     </main>
-  );
+  )
 }
 
-export default Login;
+export default Login

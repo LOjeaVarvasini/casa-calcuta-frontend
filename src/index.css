@@ -1,16 +1,11 @@
-<<<<<<< HEAD
 /* ==========================================================================
-   SISTEMA DE GESTIÓN MERENDEROS - CORE & COMPONENTES BASE
+   SISTEMA DE GESTIÓN INTERNA - CASA CALCUTA (CORE & COMPONENTES BASE)
    ========================================================================== */
 
-/* 1. RESET ACCESIBLE Y ADAPTATIVO */
-* {
-=======
 @import './styles/variables.css';
 
-/* Reset Estándar Obligatorio */
+/* 1. RESET ACCESIBLE Y ADAPTATIVO */
 *, *::before, *::after {
->>>>>>> production
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -22,24 +17,26 @@ body {
   color: var(--color-text);
   line-height: 1.5;
   font-size: var(--text-base);
-  -webkit-text-size-adjust: 100%; /* Evita problemas de zoom en iOS [cite: 830] */
+  -webkit-text-size-adjust: 100%; /* Evita problemas de zoom en iOS */
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-<<<<<<< HEAD
 /* 2. COMPONENTE FORMULARIO: INPUTS ESTÁNDAR (Reutilizable en CRUDs, Asistencia, etc.) */
-.form-group {
-=======
 .form-group {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
+  margin-bottom: var(--space-md);
   width: 100%;
 }
 
 .form-group label {
-  font-weight: 600;
   font-size: var(--text-sm);
-  color: #4a5568;
+  font-weight: 700;
+  color: var(--color-text);
 }
 
 .form-control,
@@ -47,12 +44,13 @@ body {
 .form-group select,
 .form-group textarea {
   width: 100%;
+  height: 44px; /* Altura ergonómica para tipeo móvil */
+  padding: 0 var(--space-sm);
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md); /* Estética curva unificada */
   font-family: inherit;
   font-size: var(--text-base);
-  padding: 0.75rem var(--space-md);
-  border: 1.5px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background-color: #ffffff;
   color: var(--color-text);
   transition: all 0.2s ease;
 }
@@ -63,9 +61,40 @@ body {
 .form-group textarea:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(30, 93, 136, 0.15);
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(30, 93, 136, 0.15); /* Foco con aura suave */
 }
 
+/* Grilla modular para inputs (Desktop multipropósito / Móvil vertical) */
+.form-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-sm);
+}
+
+/* Divisor estético para separar secciones dentro de un formulario largo */
+.form-divider {
+  border: 0;
+  height: 1px;
+  background-color: var(--color-border);
+  margin: var(--space-lg) 0 var(--space-md) 0;
+}
+
+.form-section-title {
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: var(--space-md);
+}
+
+@media (min-width: 768px) {
+  .form-grid-3 {
+    grid-template-columns: repeat(3, 1fr); /* 3 columnas en pantallas grandes */
+    gap: var(--space-md);
+  }
+}
+
+/* 3. COMPONENTE BOTÓN PRINCIPAL (Reutilizable en todo el sitio) */
 .btn-primary {
   font-family: inherit;
   font-size: var(--text-base);
@@ -76,7 +105,7 @@ body {
   border: none;
   border-radius: var(--radius-md);
   cursor: pointer;
-  min-height: 48px;
+  min-height: 48px; /* Altura mínima recomendada para interacción táctil */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -94,6 +123,14 @@ body {
   transform: translateY(0);
 }
 
+.btn-primary:disabled {
+  background-color: #a0aec0;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* 4. UTILERÍAS / NOTIFICACIONES DE LA API (Aportadas por backend) */
 .brand-badge {
   display: flex;
   align-items: center;
@@ -114,6 +151,8 @@ body {
   color: var(--color-danger);
   border: 1px solid rgba(235, 87, 87, 0.2);
   font-size: var(--text-sm);
+  font-weight: 600;
+  text-align: center;
 }
 
 .login-success {
@@ -123,106 +162,25 @@ body {
   color: var(--color-success);
   border: 1px solid rgba(39, 174, 96, 0.2);
   font-size: var(--text-sm);
+  font-weight: 600;
+  text-align: center;
 }
 
-/* ==========================================================================
-   COMPONENTES CORE REUTILIZABLES (ADAPTADOS PARA JSX)
-   ========================================================================== */
-
-/* Badges de estado unificados */
+/* Clases de Badge para prioridades y estados en todo el sistema */
 .badge {
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  border-radius: var(--radius-sm);
-  text-transform: uppercase;
-}
-.badge-danger { background-color: #fff5f5; color: var(--color-danger); }
-.badge-warning { background-color: #fffaf0; color: var(--color-secondary); }
-.badge-success { background-color: #f0fff4; color: var(--color-success); }
-.badge-primary { background-color: #ebf8ff; color: var(--color-primary); }
-
-/* Contenedor de Botones Simétricos Clavados a la Derecha */
-.table-actions-cell {
->>>>>>> production
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  width: 100%;
-}
-
-.form-group label {
-  font-weight: 600;
-  font-size: var(--text-sm);
-  color: #4a5568;
-}
-
-.form-group input, 
-.form-group select, 
-.form-group textarea {
-  width: 100%;
-  font-family: inherit;
-  font-size: var(--text-base);
-  padding: 0.75rem var(--space-md);
-  border: 1.5px solid var(--color-border);
-  border-radius: var(--radius-md); /* Estética curva unificada */
-  background-color: #ffffff;
-  color: var(--color-text);
-  transition: all 0.2s ease;
-}
-
-/* Foco global con aura suave para mejorar UX (Estilo SaaS moderno) */
-.form-group input:focus, 
-.form-group select:focus, 
-.form-group textarea:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(30, 93, 136, 0.15);
-}
-
-/* 3. COMPONENTE BOTÓN PRINCIPAL (Reutilizable en todo el sitio) */
-.btn-primary {
-  font-family: inherit;
-  font-size: var(--text-base);
-  font-weight: 600;
-  background-color: var(--color-primary);
-  color: #ffffff;
-  padding: 0.75rem var(--space-lg);
-  border: none;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  min-height: 48px; /* Altura óptima para pantallas táctiles móviles [cite: 830] */
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 6px rgba(30, 93, 136, 0.15);
-}
-
-.btn-primary:hover {
-  background-color: #154261;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 8px rgba(30, 93, 136, 0.2);
-}
-
-.btn-primary:active {
-  transform: translateY(0);
-}
-
-/* 4. UTILERÍAS / BADGES GENERALES */
-.brand-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  background-color: rgba(30, 93, 136, 0.1);
-  color: var(--color-primary);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
   font-weight: 700;
-  font-size: var(--text-md);
-  border-radius: var(--radius-md);
+  text-transform: uppercase;
 }
+.badge-danger { background-color: #fed7d7; color: #9b2c2c; }
+.badge-warning { background-color: #feebc8; color: #9c4221; }
+.badge-success { background-color: #c6f6d5; color: #22543d; }
+.badge-primary { background-color: #e2e8f0; color: #2d3748; }
 
 /* ==========================================================================
    ESTRUCTURA GENERAL DEL PANEL (LAYOUT OPERATIVO)
@@ -236,9 +194,9 @@ body {
   background-color: var(--color-bg);
 }
 
-/* 1. BARRA LATERAL (SIDEBAR) - Por defecto oculta en móvil */
+/* BARRA LATERAL (SIDEBAR) - Por defecto oculta en móvil */
 .app-sidebar {
-  display: none;
+  display: none; /* 🍏 OCULTA EN MÓVIL */
   flex-direction: column;
   width: 260px;
   background-color: #10344e; /* Primario oscurecido para contraste */
@@ -289,13 +247,13 @@ body {
   color: #ffffff;
 }
 
-/* 2. ÁREA DE CONTENIDO (BARRA SUPERIOR + CONTENIDO VARIABLE) */
+/* ÁREA DE CONTENIDO (BARRA SUPERIOR + CONTENIDO VARIABLE) */
 .app-content-area {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0; /* Evita desbordamiento en flexbox */
-  padding-bottom: 60px; /* Espacio para la barra inferior en móvil */
+  padding-bottom: 60px; /* 🍏 Espacio para que la barra inferior en móvil no tape nada */
 }
 
 /* Barra superior de contexto */
@@ -323,7 +281,7 @@ body {
 
 .user-info {
   text-align: right;
-  display: none; /* Se oculta en pantallas muy chicas */
+  display: none; /* Se oculta en pantallas chicas */
 }
 
 .user-name {
@@ -347,29 +305,28 @@ body {
 }
 
 /* ==========================================================================
-   BARRA DE NAVEGACIÓN INFERIOR MOBILE - VERSISÓN FLUIDA (FIXED)
+   BARRA DE NAVEGACIÓN INFERIOR MOBILE - ENFOQUE FLUIDO (FIXED)
    ========================================================================== */
 .mobile-nav {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 60px;
+  height: 64px; /* Alineado a los 64px de tu componente */
   background-color: var(--color-card);
   border-top: 1px solid var(--color-border);
-  display: flex;
-  justify-content: space-between; /* Distribución perfecta de extremo a extremo */
+  display: flex; /* Activa Flexbox nativo desde el CSS */
+  justify-content: space-around; /* Distribuye los botones simétricamente por la pantalla */
   align-items: center;
-  z-index: 100; /* Asegura quedar por encima de cualquier tarjeta */
+  z-index: 1000;
   padding: 0 var(--space-xs);
 }
 
-/* Forzamos a que cada ítem del menú ocupe el mismo espacio exacto */
 .mobile-nav-item,
 .mobile-nav-dropdown-container {
   flex: 1; 
-  min-width: 0; /* Evita que los textos largos ensanchen la caja de más */
-  max-width: 25%; /* Al ser 4 botones, ninguno puede pasar del 25% */
+  min-width: 0; 
+  max-width: 25%; 
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -397,11 +354,9 @@ body {
   display: block;
 }
 
-/* ==========================================================================
-   DROPDOWN POP-UP MÓVIL (CORREGIDO SIN DESBORDAMIENTO)
-   ========================================================================== */
+/* DROPDOWN POP-UP MÓVIL */
 .mobile-nav-dropdown-container {
-  position: relative; /* Contenedor padre de referencia */
+  position: relative;
 }
 
 .btn-dropdown-trigger {
@@ -409,18 +364,17 @@ body {
   height: 100%;
 }
 
-/* Ventana emergente flotante corregida */
 .mobile-nav-popup {
   position: absolute;
-  bottom: 65px; /* Separación limpia por encima de la barra */
-  right: var(--space-xs); /* Alineado al borde derecho con aire sutil */
+  bottom: 65px; 
+  right: var(--space-xs); 
   background-color: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12); /* Sombra más envolvente */
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
   display: none; 
   flex-direction: column;
-  width: 200px; /* Ancho fijo seguro que no desborda pantallas chicas */
+  width: 200px;
   overflow: hidden;
   z-index: 110;
 }
@@ -429,7 +383,7 @@ body {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  padding: 0.9rem var(--space-md); /* Área de clic táctil más generosa */
+  padding: 0.9rem var(--space-md);
   color: var(--color-text);
   text-decoration: none;
   font-size: var(--text-sm);
@@ -442,58 +396,13 @@ body {
   border-bottom: none;
 }
 
-/* Disparador de apertura con CSS */
 .btn-dropdown-trigger.open + .mobile-nav-popup {
   display: flex;
 }
 
 /* ==========================================================================
-   MEDIA QUERIES - RESETEO GLOBAL
-   ========================================================================== */
-@media (min-width: 768px) {
-  .app-sidebar {
-    display: flex;
-  }
-  .mobile-nav {
-    display: none; /* Desaparece por completo en escritorio */
-  }
-  .app-content-area {
-    padding-bottom: 0;
-  }
-}
-
-/* ==========================================================================
-   MEDIA QUERIES - RESPONSIVE PARA EL LAYOUT GLOBAL
-   ========================================================================== */
-@media (min-width: 768px) {
-  .app-sidebar {
-    display: flex; /* Muestra sidebar en escritorio */
-  }
-  .mobile-nav {
-    display: none; /* Oculta navegación inferior en escritorio */
-  }
-  .app-content-area {
-    padding-bottom: 0; /* Quita el espacio del nav móvil */
-  }
-  .user-info {
-    display: block; /* Muestra info de usuario completa */
-  }
-  .app-header {
-    padding: 0 var(--space-lg);
-  }
-  .main-content {
-    padding: var(--space-lg);
-  }
-  .header-title h1 {
-    font-size: var(--text-lg);
-  }
-}
-
-/* ==========================================================================
    COMPONENTES BASE: SECCIONES OPERATIVAS (FILTROS Y BUSCADORES)
    ========================================================================== */
-
-/* Barra de utilidades: Buscador a la izquierda, botón de acción a la derecha */
 .page-toolbar {
   display: flex;
   flex-direction: column;
@@ -512,42 +421,7 @@ body {
   width: 100%;
 }
 
-/* Clases de Badge para prioridades y estados en todo el sistema */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.badge-danger { background-color: #fed7d7; color: #9b2c2c; }
-.badge-warning { background-color: #feebc8; color: #9c4221; }
-.badge-success { background-color: #c6f6d5; color: #22543d; }
-.badge-primary { background-color: #e2e8f0; color: #2d3748; }
-
-@media (min-width: 768px) {
-  .page-toolbar {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .search-filter-group {
-    flex-direction: row;
-    width: auto;
-    flex: 1;
-    max-width: 600px;
-  }
-}
-
-/* ==========================================================================
-   COMPONENTES BASE: TABLAS ADAPTATIVAS Y CONTENEDORES DE INFORMACIÓN
-   ========================================================================== */
-
-/* Bloque contenedor de información destacada (Ficha de la Familia) */
+/* SECCIONES DE INFORMACIÓN DESTACADA */
 .info-profile-box {
   background-color: var(--color-card);
   border: 1px solid var(--color-border);
@@ -560,16 +434,9 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
-@media (min-width: 768px) {
-  .info-profile-box {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-lg);
-  }
-}
-
-/* Tablas con scroll horizontal controlado solo en móviles (Evita romper el layout general) */
+/* ==========================================================================
+   COMPONENTES BASE: TABLAS ADAPTATIVAS Y LÍQUIDAS DESESTRUCTURADAS
+   ========================================================================== */
 .table-responsive-container {
   width: 100%;
   overflow-x: auto;
@@ -607,30 +474,25 @@ body {
   background-color: rgba(247, 250, 252, 0.7);
 }
 
-/* Botones de acción pequeños para las filas de las tablas */
-/* ==========================================================================
-   COMPONENTES BASE: MICRO-BOTONES PARA FILAS DE TABLAS (CORREGIDO)
-   ========================================================================== */
 .btn-table-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  background-color: rgba(30, 93, 136, 0.08); /* Fondo azul sutil institucional */
+  background-color: rgba(30, 93, 136, 0.08);
   color: var(--color-primary);
   border: 1px solid rgba(30, 93, 136, 0.15);
-  padding: 0.35rem 0.65rem; /* Margen interno para dar volumen de botón */
-  border-radius: var(--radius-sm); /* Bordes suavizados unificados */
-  font-size: 0.75rem; /* Compacto para no agrandar la fila */
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
   font-weight: 700;
   text-decoration: none;
   cursor: pointer;
   transition: all 0.15s ease;
   white-space: nowrap;
-  min-height: 32px; /* Altura mínima ergonómica para clics en tabla */
+  min-height: 32px;
 }
 
-/* Efecto interactivo al pasar el mouse */
 .btn-table-action:hover {
   background-color: var(--color-primary);
   color: #ffffff;
@@ -638,57 +500,57 @@ body {
   transform: translateY(-1px);
 }
 
-.btn-table-action:active {
-  transform: translateY(0);
-}
-
-/* Variante Peligro / Eliminar (Usa la paleta roja sutil de base.css) */
 .btn-table-action.action-danger {
   background-color: #fff5f5;
   color: var(--color-danger);
   border-color: rgba(235, 87, 87, 0.2);
 }
 
-/* Efecto interactivo para la variante de peligro */
 .btn-table-action.action-danger:hover {
   background-color: var(--color-danger);
   color: #ffffff;
   border-color: var(--color-danger);
 }
 
-/* ==========================================================================
-   COMPONENTES BASE: SELECTORES DE ESTADO BINARIOS (SWITCH PASTILLA CORREGIDO)
-   ========================================================================== */
+.custom-table td:last-child {
+  text-align: right;
+  width: 170px;
+}
 
-/* Contenedor principal del switch */
+.table-actions-cell {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+}
+
+/* SELECTORES DE ESTADO BINARIOS (SWITCH PASTILLA) */
 .switch-toggle-group {
   display: inline-flex;
   background-color: var(--color-bg);
   padding: 4px;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
-  width: 100%; /* Toma todo el ancho disponible en su celda */
-  max-width: 240px; /* Evita que en monitores gigantes se estire de más */
+  width: 100%;
+  max-width: 240px;
 }
 
-/* Forzamos a que cada opción ocupe exactamente la mitad del contenedor (50%) */
 .switch-toggle-item {
   flex: 1;
   width: 50%;
   display: flex;
 }
 
-/* El radio button real se oculta */
 .switch-toggle-item input[type="radio"] {
   display: none;
 }
 
-/* Estilo del label transformado en botón idéntico */
 .switch-toggle-item label {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%; /* Ocupa el 100% de su mitad asignada */
+  width: 100%;
   padding: 0.5rem var(--space-sm);
   font-size: var(--text-sm);
   font-weight: 700;
@@ -697,30 +559,24 @@ body {
   transition: all 0.2s ease;
   min-height: 38px;
   color: #718096;
-  white-space: nowrap; /* Evita saltos de línea molestos si la pantalla es chica */
+  white-space: nowrap;
   text-align: center;
 }
 
-/* Estilos dinámicos cuando el input está chequeado */
 .switch-toggle-item input[id$="-retirado"]:checked + label {
   background-color: var(--color-success);
   color: #ffffff;
   box-shadow: var(--shadow-sm);
 }
 
-/* Variante de color para las ausencias */
 .switch-toggle-item input[id$="-falta"]:checked + label {
   background-color: var(--color-danger);
   color: #ffffff;
   box-shadow: var(--shadow-sm);
 }
 
-/* ==========================================================================
-   COMPONENTES BASE: TABLAS LÍQUIDAS DESESTRUCTURADAS (ANTI-SCROLL MÓVIL)
-   ========================================================================== */
-
+/* COMPORTAMIENTO LÍQUIDO CRÍTICO PARA CELULARES (ANTI-SCROLL MÓVIL) */
 @media (max-width: 767px) {
-  /* Forzamos a los elementos de la tabla a comportarse como bloques (verticales) */
   .custom-table-responsive, 
   .custom-table-responsive tbody, 
   .custom-table-responsive tr, 
@@ -729,12 +585,10 @@ body {
     width: 100%;
   }
 
-  /* Ocultamos la cabecera real para que no quede flotando arriba */
   .custom-table-responsive thead {
     display: none;
   }
 
-  /* Cada fila se transforma en una "tarjeta" independiente con aire entre sí */
   .custom-table-responsive tr {
     margin-bottom: var(--space-md);
     border: 1px solid var(--color-border);
@@ -744,24 +598,22 @@ body {
     box-shadow: var(--shadow-sm);
   }
 
-  /* Cada celda se estira y genera espacio para su etiqueta simulada */
   .custom-table-responsive td {
-    text-align: right; /* El dato real se va a la derecha */
+    text-align: right;
     padding: var(--space-sm) var(--space-md);
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
     position: relative;
     display: flex;
-    justify-content: space-between; /* Alinea etiqueta a la izq y dato a la der */
+    justify-content: space-between;
     align-items: center;
   }
 
   .custom-table-responsive td:last-child {
-    border-bottom: none; /* Quitamos la línea a la última celda de la tarjeta */
+    border-bottom: none;
   }
 
-  /* Inyectamos dinámicamente el nombre de la columna usando el atributo data-label */
   .custom-table-responsive td::before {
-    content: attr(data-label); /* Toma el texto del HTML */
+    content: attr(data-label);
     font-weight: 700;
     color: var(--color-text);
     text-align: left;
@@ -769,141 +621,37 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
-}
 
-/* ==========================================================================
-   CORRECCIÓN: ALINEACIÓN FIJA DE ACCIONES EN TABLAS
-   ========================================================================== */
-
-/* ==========================================================================
-   COMPONENTE DE ACCIONES UNIFICADO (DESKTOP Y MOBILE)
-   ========================================================================== */
-
-/* Comportamiento base en Desktop */
-.custom-table td:last-child {
-  text-align: right;
-  width: 170px; /* Ancho de columna controlado para que no baile */
-}
-
-.table-actions-cell {
-  display: flex;
-  gap: 6px;
-  justify-content: flex-end; /* Alinea los botones al fondo derecho de la celda */
-  align-items: center;
-  width: 100%;
-}
-
-/* --- Ajuste dentro de la Media Query Móvil --- */
-@media (max-width: 767px) {
-  /* Forzamos a que la celda de acciones en la tarjeta móvil ocupe el 100% */
   .custom-table-responsive td[data-label="Acciones"] {
     display: flex;
-    justify-content: space-between; /* "Acciones" a la izquierda, botones a la derecha */
+    justify-content: space-between;
     align-items: center;
     width: 100%;
-    text-align: right;
   }
 
-  /* El contenedor de botones dentro de la tarjeta móvil */
   .custom-table-responsive td[data-label="Acciones"] .table-actions-cell {
     display: flex;
-    justify-content: flex-end; /* Clava los botones al borde derecho de la tarjeta */
+    justify-content: flex-end;
     gap: 6px;
-    width: auto; /* Evita que ocupe todo el ancho para no romper la etiqueta izquierda */
+    width: auto;
   }
 }
-
-
-/* ==========================================================================
-   COMPONENTES BASE: FORMULARIOS AVANZADOS Y GRILLAS DE ENTRADA
-   ========================================================================== */
-
-/* Grupo de control: apila la etiqueta sobre el input */
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  margin-bottom: var(--space-md);
-  width: 100%;
-}
-
-.form-group label {
-  font-size: var(--text-sm);
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.form-control {
-  width: 100%;
-  height: 44px; /* Altura ergonómica para tipeo móvil */
-  padding: 0 var(--space-sm);
-  background-color: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-family: inherit;
-  font-size: var(--text-base);
-  color: var(--color-text);
-  transition: all 0.2s ease;
-}
-
-.form-control:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  background-color: #ffffff;
-  box-shadow: 0 0 0 3px rgba(30, 93, 136, 0.15);
-}
-
-/* Grilla modular para inputs (Desktop multipropósito / Móvil vertical) */
-.form-grid-3 {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-sm);
-}
-
-/* Divisor estético para separar secciones dentro de un formulario largo */
-.form-divider {
-  border: 0;
-  height: 1px;
-  background-color: var(--color-border);
-  margin: var(--space-lg) 0 var(--space-md) 0;
-}
-
-.form-section-title {
-  font-size: var(--text-md);
-  font-weight: 700;
-  color: var(--color-primary);
-  margin-bottom: var(--space-md);
-}
-
-@media (min-width: 768px) {
-  .form-grid-3 {
-    grid-template-columns: repeat(3, 1fr); /* 3 columnas en pantallas grandes */
-    gap: var(--space-md);
-  }
-}
-
 
 /* ==========================================================================
    COMPONENTES BASE: POP-UPS DE ALERTA Y VENTANAS MODALES
    ========================================================================== */
-
-/* Fondo oscurecedor que bloquea la interacción externa */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(45, 55, 72, 0.6); /* Gris oscuro translúcido */
-  backdrop-filter: blur(2px); /* Suaviza el fondo para centrar la atención */
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(45, 55, 72, 0.6);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--space-md);
-  z-index: 2000; /* Por encima de barras laterales y de navegación */
+  z-index: 2000;
 }
 
-/* Contenedor del cuadro de diálogo popup */
 .modal-box {
   background-color: var(--color-card);
   border-radius: var(--radius-md);
@@ -949,14 +697,64 @@ body {
   gap: var(--space-sm);
 }
 
-/* Animación de entrada ergonómica */
 @keyframes modalScaleIn {
-  from {
-    transform: scale(0.95);
-    opacity: 0;
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* ==========================================================================
+   INTERRUPTOR DE INTERFAZ: MEDIA QUERIES PARA ESCRITORIO (Tablets en adelante)
+   ========================================================================== */
+@media (min-width: 768px) {
+  .app-container {
+    flex-direction: row; /* 🍏 Cambia la orientación a horizontal para Sidebar + Panel */
   }
-  to {
-    transform: scale(1);
-    opacity: 1;
+
+  .app-sidebar {
+    display: flex; /* 🍏 PRENDE LA SIDEBAR EN PC */
+  }
+
+  .mobile-nav {
+    display: none !important; /* 🍏 APAGA POR COMPLETO LA BARRA INFERIOR EN PC */
+  }
+
+  .app-content-area {
+    padding-bottom: 0; /* 🍏 Quita el aire inferior en PC porque ya no está la barra fija */
+  }
+
+  .user-info {
+    display: block;
+  }
+
+  .app-header {
+    padding: 0 var(--space-lg);
+  }
+
+  .main-content {
+    padding: var(--space-lg);
+  }
+
+  .header-title h1 {
+    font-size: var(--text-lg);
+  }
+
+  .page-toolbar {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .search-filter-group {
+    flex-direction: row;
+    width: auto;
+    flex: 1;
+    max-width: 600px;
+  }
+
+  .info-profile-box {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-lg);
   }
 }

@@ -15,9 +15,14 @@ function BottomNav({ onNavegar, pantallaActiva }) {
 
   return (
     <nav className="mobile-nav" style={{
-      position: 'fixed', bottom: 0, left: 0, right: 0, height: '64px',
-      backgroundColor: 'var(--color-card)', borderTop: '1px solid var(--color-border)',
-      display: 'flex', justifyContent: 'space-around', alignItems: 'center', zIndex: 1000
+      position: 'fixed', 
+      bottom: 0, 
+      left: 0, 
+      right: 0, 
+      height: '64px',
+      backgroundColor: 'var(--color-card)', 
+      borderTop: '1px solid var(--color-border)',
+      zIndex: 1000
     }}>
       <div onClick={() => onNavegar('familias')} style={obtenerEstiloItem('familias')}>
         <span style={{ fontSize: '1.25rem' }}>👥</span> Familias
