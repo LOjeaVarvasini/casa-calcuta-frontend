@@ -92,32 +92,31 @@ function Familias({ onNavegar }) {
 
     try {
       const token = localStorage.getItem('access_token');
-      let usuarioId = 1; // Forzamos un default seguro para testing continuo
+      let usuarioId = 1; 
       
       if (token) {
         try {
           const payloadBase64 = token.split('.')[1];
-          // Reemplazo seguro de caracteres para atob en navegadores
           const base64 = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
           const payloadJson = JSON.parse(window.atob(base64));
           
-          console.log("🍏 CONTENIDO REAL DEL JWT:", payloadJson); // Ver qué campos trae tu token
+          console.log("🍏 CONTENIDO REAL DEL JWT:", payloadJson);
           usuarioId = payloadJson.sub || payloadJson.id_usuario || payloadJson.id || payloadJson.user_id || 1;
         } catch (jwtErr) {
           console.error("🚨 Error decodificando JWT:", jwtErr);
         }
       }
 
-      // Sanitización estricta del payload para cumplir el contrato de Laravel:
+      // Sanitización estricta del payload para cumplir el contrato de Laravel
       const payload = {
         direccion: formData.direccion,
         telefono: formData.telefono,
         puntaje_prioridad: parseInt(formData.puntaje_prioridad, 10) || 0,
-        prioridad_social: formData.prioridad_social.toUpperCase(), // 🍏 Forzamos MAYÚSCULAS ("BAJA", "ALTA", etc.)
-        estado_lista: formData.estado_lista.toUpperCase(),       // 🍏 Por seguridad, también en mayúsculas
+        prioridad_social: formData.prioridad_social.toLowerCase(), // 🍏 Cambiado a minúsculas ("alta", "baja") para que coincida con la DB de Ignacio
+        estado_lista: formData.estado_lista.toUpperCase(),       
         fecha_ingreso: formData.fecha_ingreso,
         activa: formData.activa ? 1 : 0, 
-        registrado_por: parseInt(usuarioId, 10) || 1,              // 🍏 Forzamos entero puro (evita el string "1")
+        registrado_por: parseInt(usuarioId, 10) || 1,              
       };
 
       console.log("📦 PAYLOAD SANEADO FINAL:", payload);
@@ -127,6 +126,11 @@ function Familias({ onNavegar }) {
 
       setTimeout(() => {
         setShowNuevoModal(false);
+        
+        // 🍏 Reseteamos filtros del Toolbar para asegurar que la grilla muestre el nuevo elemento arriba
+        setSearchTerm('');
+        setPriorityFilter('');
+
         setFormData({
           direccion: '',
           telefono: '',
@@ -146,7 +150,11 @@ function Familias({ onNavegar }) {
     }
   };
 
+  // ==========================================================================
+  // NORMALIZACIÓN DE CLASES VISUALES (Machea mayúsculas y minúsculas de la DB)
+  // ==========================================================================
   const getBadgeClass = (prioridad) => {
+    const p = prioridad ? prioridad.toLowerCase().replace('-', '_') : '';
     const mapa = {
       'muy_alta': 'badge-danger',
       'alta': 'badge-warning',
@@ -154,10 +162,11 @@ function Familias({ onNavegar }) {
       'baja': 'badge-success',
       'muy_baja': 'badge-success',
     };
-    return mapa[prioridad] || 'badge-primary';
+    return mapa[p] || 'badge-primary';
   };
 
   const getPrioridadLabel = (prioridad) => {
+    const p = prioridad ? prioridad.toLowerCase().replace('-', '_') : '';
     const mapa = {
       'muy_alta': 'Muy Alta',
       'alta': 'Alta',
@@ -165,7 +174,7 @@ function Familias({ onNavegar }) {
       'baja': 'Baja',
       'muy_baja': 'Muy Baja',
     };
-    return mapa[prioridad] || prioridad;
+    return mapa[p] || prioridad;
   };
 
   return (
