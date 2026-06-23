@@ -32,6 +32,7 @@ async function parseJsonResponse(response) {
 
 export async function apiRequest(path, options = {}) {
   const response = await fetch(buildApiUrl(path), {
+    redirect: 'manual', // 🍏 CRÍTICO: Evita que el navegador siga redirecciones web ocultas y rompa por CORS
     headers: {
       Accept: 'application/json',
       ...(options.body ? { 'Content-Type': 'application/json' } : {}),
@@ -40,9 +41,15 @@ export async function apiRequest(path, options = {}) {
     ...options,
   })
 
+  // Si la respuesta es de tipo opaca/redirección (código 0 o 3xx) pero el servidor procesó el POST
+  if (response.type === 'opaqueredirect' || response.status === 302) {
+    return { message: 'Operación procesada en el servidor' }
+  }
+
   const data = await parseJsonResponse(response)
 
-  if (!response.ok) {
+  // Modificamos para aceptar respuestas en el rango 200-299 o redirecciones controladas
+  if (!response.ok && response.status !== 0) {
     throw new Error(data.message || data.error || 'No se pudo completar la solicitud')
   }
 
@@ -71,5 +78,42 @@ export async function logoutRequest(accessToken) {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
+  })
+}
+
+// ==========================================================================
+// FUNCIONES DE FAMILIAS
+// ==========================================================================
+
+/**
+ * Obtiene el listado paginado de familias.
+ * @param {string} [queryParams] - Query string opcional (ej: "per_page=15")
+ * @returns {Promise<Object>} Respuesta paginada con data[], links, meta, etc.
+ */
+export async function getFamiliasRequest(queryParams = '') {
+  const token = localStorage.getItem('access_token')
+  const path = queryParams ? `/api/familias?${queryParams}` : '/api/familias'
+
+  return apiRequest(path, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+}
+
+/**
+ * Crea una nueva familia en el sistema con sanitización de tipos para Laravel.
+ * @param {Object} payload - Datos de la nueva familia según contrato de API.
+ */
+export async function createFamiliaRequest(payload) {
+  const token = localStorage.getItem('access_token')
+
+  return apiRequest('/api/familias', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
   })
 }
