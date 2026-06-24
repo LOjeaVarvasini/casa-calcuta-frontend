@@ -15,11 +15,14 @@ function Familias({ onNavegar }) {
   const [familias, setFamilias] = useState([]);
   const [paginacion, setPaginacion] = useState(null);
 
-  // Estados de UI de la Grilla
+  // Estados de UI de la Grilla (Filtros dinámicos conectados a los 5 endpoints de Ignacio)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
+  const [evaluadaFilter, setEvaluadaFilter] = useState(''); // 🍏 Filtro 2 y 3: Evaluadas / No Evaluadas
+  const [estadoListaFilter, setEstadoListaFilter] = useState(''); // 🍏 Filtro 4: PRINCIPAL / ESPERA
+  const [sortByFilter, setSortByFilter] = useState(''); // 🍏 Filtro 5: Ordenar por Puntaje
 
   // Estados del modal de Nueva Familia (Flujo por etapas)
   const [showNuevoModal, setShowNuevoModal] = useState(false);
@@ -71,19 +74,24 @@ function Familias({ onNavegar }) {
   const [referenteSuccess, setReferenteSuccess] = useState(null);
 
   // ==========================================================================
-  // CARGA INICIAL DE FAMILIAS DESDE LA API
+  // CARGA INICIAL DE FAMILIAS DESDE LA API CON FILTROS DINÁMICOS MULTIPLES
   // ==========================================================================
-  const cargarFamilias = useCallback(async (filtros = {}) => {
+  const cargarFamilias = useCallback(async (filtrosManuales = {}) => {
     setLoading(true);
     setError(null);
 
-    const filtroPrioridad = filtros.priorityFilter !== undefined ? filtros.priorityFilter : priorityFilter;
+    // Permitimos resetear pasándolos por parámetro o leyendo los estados reactivos
+    const fPrioridad = filtrosManuales.priorityFilter !== undefined ? filtrosManuales.priorityFilter : priorityFilter;
+    const fEvaluada = filtrosManuales.evaluadaFilter !== undefined ? filtrosManuales.evaluadaFilter : evaluadaFilter;
+    const fEstadoLista = filtrosManuales.estadoListaFilter !== undefined ? filtrosManuales.estadoListaFilter : estadoListaFilter;
+    const fSortBy = filtrosManuales.sortByFilter !== undefined ? filtrosManuales.sortByFilter : sortByFilter;
 
     try {
       const queryParams = new URLSearchParams();
       queryParams.append('per_page', '15');
 
-      if (filtroPrioridad) {
+      // 1. Filtro por Nivel de Prioridad Social
+      if (fPrioridad) {
         const mapaPrioridad = {
           'muy-alta': 'muy_alta',
           'alta': 'alta',
@@ -91,11 +99,27 @@ function Familias({ onNavegar }) {
           'baja': 'baja',
           'muy-baja': 'muy_baja',
         };
-        const valorReal = mapaPrioridad[filtroPrioridad] || filtroPrioridad;
+        const valorReal = mapaPrioridad[fPrioridad] || fPrioridad;
         queryParams.append('prioridad_social', valorReal);
       }
 
-      // Dejamos el envío por si el backend se actualiza, pero controlamos en el front
+      // 2 y 3. Filtro de Evaluadas o No Evaluadas
+      if (fEvaluada) {
+        queryParams.append('evaluada', fEvaluada);
+      }
+
+      // 4. Filtro por Estado de Lista
+      if (fEstadoLista) {
+        queryParams.append('estado_lista', fEstadoLista);
+      }
+
+      // 5. Filtro Ordenado por Puntaje Descendente
+      if (fSortBy === 'puntaje_desc') {
+        queryParams.append('sort_by', 'puntaje_prioridad');
+        queryParams.append('sort_order', 'desc');
+      }
+
+      // Término de búsqueda general (Mapeo preventivo front)
       if (searchTerm) {
         queryParams.append('search', searchTerm);
       }
@@ -108,18 +132,18 @@ function Familias({ onNavegar }) {
         total: data.total,
       });
     } catch (err) {
-      setError(err.message || 'Error al cargar las familias.');
+      setError(err.message || 'Error al cargar las familias desde el servidor cloud.');
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, priorityFilter]);
+  }, [searchTerm, priorityFilter, evaluadaFilter, estadoListaFilter, sortByFilter]);
 
   useEffect(() => {
     cargarFamilias();
   }, [cargarFamilias]);
 
   // ==========================================================================
-  // FILTRADO EN CALIENTE (CLIENT-SIDE FALLBACK ANTI-BUG BACKEND)
+  // FILTRADO EN CALIENTE (CLIENT-SIDE COMPLEMENTARIO PARA BÚSQUEDA)
   // ==========================================================================
   const familiasFiltradas = familias.filter((familia) => {
     if (!searchTerm) return true;
@@ -127,7 +151,6 @@ function Familias({ onNavegar }) {
     const term = searchTerm.toLowerCase().trim();
     const referente = familia.referente;
 
-    // Si no tiene referente, permitimos buscar por el string "Familia #ID"
     if (!referente) {
       return `familia #${familia.id_familia}`.toLowerCase().includes(term);
     }
@@ -262,7 +285,14 @@ function Familias({ onNavegar }) {
       activa: true,
     });
     setSaveSuccess(null);
-    cargarFamilias();
+    
+    // Al cerrar post-creación, reseteamos todos los selectores del toolbar
+    setSearchTerm('');
+    setPriorityFilter('');
+    setEvaluadaFilter('');
+    setEstadoListaFilter('');
+    setSortByFilter('');
+    cargarFamilias({ priorityFilter: '', evaluadaFilter: '', estadoListaFilter: '', sortByFilter: '' });
   };
 
   // ==========================================================================
@@ -360,11 +390,14 @@ function Familias({ onNavegar }) {
         if (showPostCreacion) {
           setSearchTerm('');
           setPriorityFilter('');
+          setEvaluadaFilter('');
+          setEstadoListaFilter('');
+          setSortByFilter('');
           setShowNuevoModal(false);
           setShowPostCreacion(false);
           setFamiliaCreadaId(null);
           setSaveSuccess(null);
-          cargarFamilias({ searchTerm: '', priorityFilter: '' });
+          cargarFamilias({ searchTerm: '', priorityFilter: '', evaluadaFilter: '', estadoListaFilter: '', sortByFilter: '' });
         } else {
           cargarFamilias();
           refrescarFichaEnCaliente();
@@ -377,9 +410,7 @@ function Familias({ onNavegar }) {
     }
   };
 
-  // ==========================================================================
-  // NORMALIZACIÓN DE CLASES VISUALES
-  // ==========================================================================
+  // Helpers visuales
   const getBadgeClass = (prioridad) => {
     const p = prioridad ? prioridad.toLowerCase().replace('-', '_') : '';
     const mapa = {
@@ -406,32 +437,73 @@ function Familias({ onNavegar }) {
 
   return (
     <div>
-      <section className="page-toolbar">
-        <div className="search-filter-group">
-          <div className="form-group" style={{ flex: 2 }}>
+      {/* 🍏 TOOLBAR EXPANDIDO CON LOS 5 SELECTORES DISPONIBLES DE LA API */}
+      <section className="page-toolbar" style={{ flexDirection: 'column', gap: 'var(--space-sm)', alignItems: 'stretch' }}>
+        <div className="search-filter-group" style={{ display: 'grid', gridTemplateColumns: '2fr repeat(4, 1fr)', gap: 'var(--space-xs)', width: '100%' }}>
+          
+          {/* Buscador de Referente */}
+          <div className="form-group">
             <input
               type="search"
-              placeholder="Buscar por apellido de referente o DNI..."
+              placeholder="Buscar referente o DNI..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="form-group" style={{ flex: 1 }}>
+
+          {/* Selector 1: Nivel de Prioridad */}
+          <div className="form-group">
             <select
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
             >
-              <option value="">Todas las prioridades</option>
+              <option value="">Prioridades (Todas)</option>
               <option value="muy-alta">Muy Alta</option>
               <option value="alta">Alta</option>
               <option value="media">Media</option>
               <option value="baja">Baja</option>
             </select>
           </div>
+
+          {/* Selector 2 y 3: Estado de Evaluación */}
+          <div className="form-group">
+            <select
+              value={evaluadaFilter}
+              onChange={(e) => setEvaluadaFilter(e.target.value)}
+            >
+              <option value="">Evaluación (Todas)</option>
+              <option value="true">Evaluadas</option>
+              <option value="false">No Evaluadas</option>
+            </select>
+          </div>
+
+          {/* Selector 4: Estado de Lista */}
+          <div className="form-group">
+            <select
+              value={estadoListaFilter}
+              onChange={(e) => setEstadoListaFilter(e.target.value)}
+            >
+              <option value="">Listas (Todas)</option>
+              <option value="PRINCIPAL">Principal</option>
+              <option value="ESPERA">Espera</option>
+            </select>
+          </div>
+
+          {/* Selector 5: Ordenamiento por Puntaje */}
+          <div className="form-group">
+            <select
+              value={sortByFilter}
+              onChange={(e) => setSortByFilter(e.target.value)}
+            >
+              <option value="">Orden estándar</option>
+              <option value="puntaje_desc">Mayor Puntaje Priority</option>
+            </select>
+          </div>
         </div>
+
         <button
           className="btn-primary"
-          style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ alignSelf: 'flex-end', minHeight: '40px', padding: '0 1.5rem' }}
           onClick={() => setShowNuevoModal(true)}
         >
           ➕ Nueva Familia
@@ -440,7 +512,7 @@ function Familias({ onNavegar }) {
 
       {loading && (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
-          <p style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Cargando familias...</p>
+          <p style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Cargando familias con filtros activos...</p>
         </div>
       )}
 
@@ -450,11 +522,10 @@ function Familias({ onNavegar }) {
         <section className="families-grid">
           {familiasFiltradas.length === 0 && (
             <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px 0', color: '#718096' }}>
-              <p>No se encontraron familias.</p>
+              <p>No se encontraron familias que cumplan con los filtros seleccionados.</p>
             </div>
           )}
 
-          {/* 🍏 MAPEAMOS DESDE EL ARRAY FILTRADO EN CALIENTE */}
           {familiasFiltradas.map((family) => (
             <div className="family-card" key={family.id_familia}>
               <header className="card-family-header">
@@ -639,7 +710,7 @@ function Familias({ onNavegar }) {
         <div className="modal-overlay" onClick={handleCerrarModalCreacion}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>➕ Nueva Familia {familiaCreadaId && `(#${familiaCreadaId})`}</h3>
+              <h3>➕ Nueva Familia {familyCreatedId && `(#${familiaCreadaId})`}</h3>
             </div>
 
             {!showPostCreacion ? (
