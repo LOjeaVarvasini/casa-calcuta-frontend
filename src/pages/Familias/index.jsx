@@ -1,19 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getFamiliasRequest, createFamiliaRequest } from '../../config/api.js';
+import {
+  getFamiliasRequest,
+  createFamiliaRequest,
+  getIntegrantesRequest,
+  asignarReferenteRequest,
+  createIntegranteRequest, // 🍏 Importamos la nueva petición
+} from '../../config/api.js';
 import './familias.css';
 
 function Familias({ onNavegar }) {
-  // Estados de datos reales
+  // Estados de datos reales (Grilla Principal)
   const [familias, setFamilias] = useState([]);
   const [paginacion, setPaginacion] = useState(null);
 
-  // Estados de UI
+  // Estados de UI de la Grilla
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
 
-  // Estados del modal de Nueva Familia
+  // Estados del modal de Nueva Familia (Flujo por etapas)
   const [showNuevoModal, setShowNuevoModal] = useState(false);
   const [formData, setFormData] = useState({
     direccion: '',
@@ -28,18 +34,48 @@ function Familias({ onNavegar }) {
   const [saveError, setSaveError] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(null);
 
+  // Estados post-creación (Control de botones de acción)
+  const [familiaCreadaId, setFamiliaCreadaId] = useState(null);
+  const [showPostCreacion, setShowPostCreacion] = useState(false);
+
+  // Estados del submodal de Añadir Integrante
+  const [showIntegranteModal, setShowIntegranteModal] = useState(false);
+  const [integranteData, setIntegranteData] = useState({
+    nombre: '',
+    apellido: '',
+    fecha_nacimiento: '',
+    tipo_documento: 'DNI',
+    numero_documento: '',
+  });
+  const [savingIntegrante, setSavingIntegrante] = useState(false);
+  const [integranteError, setIntegranteError] = useState(null);
+  const [integranteSuccess, setIntegranteSuccess] = useState(null);
+
+  // Estados del submodal de Selección de Referente
+  const [showReferenteModal, setShowReferenteModal] = useState(false);
+  const [integrantes, setIntegrantes] = useState([]);
+  const [loadingIntegrantes, setLoadingIntegrantes] = useState(false);
+  const [integrantesError, setIntegrantesError] = useState(null);
+  const [integranteSeleccionado, setIntegranteSeleccionado] = useState('');
+  const [asignandoReferente, setAsignandoReferente] = useState(false);
+  const [referenteError, setReferenteError] = useState(null);
+  const [referenteSuccess, setReferenteSuccess] = useState(null);
+
   // ==========================================================================
   // CARGA INICIAL DE FAMILIAS DESDE LA API
   // ==========================================================================
-  const cargarFamilias = useCallback(async () => {
+  const cargarFamilias = useCallback(async (filtros = {}) => {
     setLoading(true);
     setError(null);
+
+    const terminoBusqueda = filtros.searchTerm !== undefined ? filtros.searchTerm : searchTerm;
+    const filtroPrioridad = filtros.priorityFilter !== undefined ? filtros.priorityFilter : priorityFilter;
 
     try {
       const queryParams = new URLSearchParams();
       queryParams.append('per_page', '15');
 
-      if (priorityFilter) {
+      if (filtroPrioridad) {
         const mapaPrioridad = {
           'muy-alta': 'muy_alta',
           'alta': 'alta',
@@ -47,12 +83,12 @@ function Familias({ onNavegar }) {
           'baja': 'baja',
           'muy-baja': 'muy_baja',
         };
-        const valorReal = mapaPrioridad[priorityFilter] || priorityFilter;
+        const valorReal = mapaPrioridad[filtroPrioridad] || filtroPrioridad;
         queryParams.append('prioridad_social', valorReal);
       }
 
-      if (searchTerm) {
-        queryParams.append('search', searchTerm);
+      if (terminoBusqueda) {
+        queryParams.append('search', terminoBusqueda);
       }
 
       const data = await getFamiliasRequest(queryParams.toString());
@@ -92,45 +128,155 @@ function Familias({ onNavegar }) {
 
     try {
       const token = localStorage.getItem('access_token');
-      let usuarioId = 1; 
-      
+      let usuarioId = 1;
+
       if (token) {
         try {
           const payloadBase64 = token.split('.')[1];
           const base64 = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
           const payloadJson = JSON.parse(window.atob(base64));
-          
-          console.log("🍏 CONTENIDO REAL DEL JWT:", payloadJson);
           usuarioId = payloadJson.sub || payloadJson.id_usuario || payloadJson.id || payloadJson.user_id || 1;
         } catch (jwtErr) {
-          console.error("🚨 Error decodificando JWT:", jwtErr);
+          console.error('Error decodificando JWT:', jwtErr);
         }
       }
 
-      // Sanitización estricta del payload para cumplir el contrato de Laravel
       const payload = {
         direccion: formData.direccion,
         telefono: formData.telefono,
         puntaje_prioridad: parseInt(formData.puntaje_prioridad, 10) || 0,
-        prioridad_social: formData.prioridad_social.toLowerCase(), // 🍏 Cambiado a minúsculas ("alta", "baja") para que coincida con la DB de Ignacio
-        estado_lista: formData.estado_lista.toUpperCase(),       
+        prioridad_social: formData.prioridad_social.toLowerCase(),
+        estado_lista: formData.estado_lista.toUpperCase(),
         fecha_ingreso: formData.fecha_ingreso,
-        activa: formData.activa ? 1 : 0, 
-        registrado_por: parseInt(usuarioId, 10) || 1,              
+        activa: formData.activa ? 1 : 0,
+        registrado_por: parseInt(usuarioId, 10) || 1,
       };
 
-      console.log("📦 PAYLOAD SANEADO FINAL:", payload);
-
-      await createFamiliaRequest(payload);
+      const data = await createFamiliaRequest(payload);
+      setFamiliaCreadaId(data.id_familia);
       setSaveSuccess('Familia creada exitosamente.');
+      setShowPostCreacion(true);
+    } catch (err) {
+      setSaveError(err.message || 'Error al crear la familia.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCerrarModalCreacion = () => {
+    setShowNuevoModal(false);
+    setShowPostCreacion(false);
+    setFamiliaCreadaId(null);
+    setFormData({
+      direccion: '',
+      telefono: '',
+      puntaje_prioridad: '',
+      prioridad_social: '',
+      estado_lista: 'PRINCIPAL',
+      fecha_ingreso: '',
+      activa: true,
+    });
+    setSaveSuccess(null);
+    cargarFamilias();
+  };
+
+  // ==========================================================================
+  // FLUJO DEL SUBMODAL DE AÑADIR INTEGRANTE
+  // ==========================================================================
+  const handleIntegranteInputChange = (e) => {
+    const { name, value } = e.target;
+    setIntegranteData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleCrearIntegranteSubmit = async (e) => {
+    e.preventDefault();
+    if (!familiaCreadaId) return;
+
+    setSavingIntegrante(true);
+    setIntegranteError(null);
+    setIntegranteSuccess(null);
+
+    // Sanitización estricta bajo requerimientos de la DB del servidor cloud
+    const payload = {
+      nombre: integranteData.nombre,
+      apellido: integranteData.apellido,
+      fecha_nacimiento: integranteData.fecha_nacimiento,
+      tipo_documento: integranteData.tipo_documento.toUpperCase(), // 🍏 Forzamos mayúsculas
+      numero_documento: integranteData.numero_documento,
+      referente: 0, // 🍏 Nace por defecto como no-referente (numérico)
+      familia_id: parseInt(familiaCreadaId, 10), // 🍏 Forzamos entero
+    };
+
+    try {
+      await createIntegranteRequest(payload);
+      setIntegranteSuccess(`¡${integranteData.nombre} fue añadido correctamente!`);
+      
+      // Limpiamos los campos del form de integrante para permitir cargas consecutivas
+      setIntegranteData({
+        nombre: '',
+        apellido: '',
+        fecha_nacimiento: '',
+        tipo_documento: 'DNI',
+        numero_documento: '',
+      });
+
+      cargarFamilias(); // Sincroniza la grilla por detrás
 
       setTimeout(() => {
-        setShowNuevoModal(false);
-        
-        // 🍏 Reseteamos filtros del Toolbar para asegurar que la grilla muestre el nuevo elemento arriba
+        setIntegranteSuccess(null);
+      }, 2000);
+    } catch (err) {
+      setIntegranteError(err.message || 'Error al añadir el integrante.');
+    } finally {
+      setSavingIntegrante(false);
+    }
+  };
+
+  // ==========================================================================
+  // FLUJO DEL SUBMODAL DE REFERENTE
+  // ==========================================================================
+  const handleAbrirReferente = async () => {
+    setShowReferenteModal(true);
+    setLoadingIntegrantes(true);
+    setIntegrantesError(null);
+    setIntegrantes([]);
+    setIntegranteSeleccionado('');
+    setReferenteError(null);
+    setReferenteSuccess(null);
+
+    try {
+      const data = await getIntegrantesRequest(familiaCreadaId);
+      const adultos = (data || []).filter(
+        (integrante) => integrante.categoria_etaria === 'ADULTO'
+      );
+      setIntegrantes(adultos);
+    } catch (err) {
+      setIntegrantesError(err.message || 'Error al cargar integrantes.');
+    } finally {
+      setLoadingIntegrantes(false);
+    }
+  };
+
+  const handleAsignarReferente = async () => {
+    if (!integranteSeleccionado) return;
+
+    setAsignandoReferente(true);
+    setReferenteError(null);
+    setReferenteSuccess(null);
+
+    try {
+      await asignarReferenteRequest(familiaCreadaId, integranteSeleccionado);
+      setReferenteSuccess('Referente asignado correctamente.');
+
+      setTimeout(() => {
         setSearchTerm('');
         setPriorityFilter('');
-
+        
+        setShowNuevoModal(false);
+        setShowPostCreacion(false);
+        setShowReferenteModal(false);
+        setFamiliaCreadaId(null);
+        
         setFormData({
           direccion: '',
           telefono: '',
@@ -141,17 +287,18 @@ function Familias({ onNavegar }) {
           activa: true,
         });
         setSaveSuccess(null);
-        cargarFamilias();
+
+        cargarFamilias({ searchTerm: '', priorityFilter: '' });
       }, 1500);
     } catch (err) {
-      setSaveError(err.message || 'Error al crear la familia.');
+      setReferenteError(err.message || 'Error al asignar referente.');
     } finally {
-      setSaving(false);
+      setAsignandoReferente(false);
     }
   };
 
   // ==========================================================================
-  // NORMALIZACIÓN DE CLASES VISUALES (Machea mayúsculas y minúsculas de la DB)
+  // NORMALIZACIÓN DE CLASES VISUALES
   // ==========================================================================
   const getBadgeClass = (prioridad) => {
     const p = prioridad ? prioridad.toLowerCase().replace('-', '_') : '';
@@ -217,11 +364,7 @@ function Familias({ onNavegar }) {
         </div>
       )}
 
-      {error && (
-        <div className="login-error" style={{ marginBottom: 'var(--space-md)' }}>
-          {error}
-        </div>
-      )}
+      {error && <div className="login-error" style={{ marginBottom: 'var(--space-md)' }}>{error}</div>}
 
       {!loading && !error && (
         <section className="families-grid">
@@ -231,30 +374,30 @@ function Familias({ onNavegar }) {
             </div>
           )}
 
-          {familias.map((familia) => (
-            <div className="family-card" key={familia.id_familia}>
+          {familias.map((family) => (
+            <div className="family-card" key={family.id_familia}>
               <header className="card-family-header">
                 <div>
                   <h2 className="family-name">
-                    {familia.referente
-                      ? `${familia.referente.apellido}${familia.referente.nombre ? ', ' + familia.referente.nombre : ''}`
-                      : `Familia #${familia.id_familia}`}
+                    {family.referente
+                      ? `${family.referente.apellido}${family.referente.nombre ? ', ' + family.referente.nombre : ''}`
+                      : `Familia #${family.id_familia}`}
                   </h2>
                   <p className="referent-info">
-                    Ref: {familia.referente ? `${familia.referente.nombre} ${familia.referente.apellido}` : '[Sin referente]'}
+                    Ref: {family.referente ? `${family.referente.nombre} ${family.referente.apellido}` : '[Sin referente]'}
                     &nbsp;&bull;&nbsp;
-                    DNI {familia.referente ? familia.referente.numero_documento : '[N/D]'}
+                    DNI {family.referente ? family.referente.numero_documento : '[N/D]'}
                   </p>
                 </div>
-                <span className={`badge ${getBadgeClass(familia.prioridad_social)}`}>
-                  {getPrioridadLabel(familia.prioridad_social)}
+                <span className={`badge ${getBadgeClass(family.prioridad_social)}`}>
+                  {getPrioridadLabel(family.prioridad_social)}
                 </span>
               </header>
               <div className="card-family-body">
-                <div className="metric-mini">🏠 <span>{familia.direccion || '[Sin dirección]'}</span></div>
-                <div className="metric-mini">📞 <span>{familia.telefono || '[Sin teléfono]'}</span></div>
+                <div className="metric-mini">🏠 <span>{family.direccion || '[Sin dirección]'}</span></div>
+                <div className="metric-mini">📞 <span>{family.telefono || '[Sin teléfono]'}</span></div>
                 <div className="metric-mini">
-                  📋 <span>Estado: {familia.estado_lista === 'PRINCIPAL' ? 'Activo' : 'En Espera'}</span>
+                  📋 <span>Estado: {family.estado_lista === 'PRINCIPAL' ? 'Activo' : 'En Espera'}</span>
                 </div>
               </div>
               <footer className="card-family-footer">
@@ -262,7 +405,7 @@ function Familias({ onNavegar }) {
                   <button
                     type="button"
                     className="btn-table-action"
-                    onClick={() => alert('[Navegación] Ver ficha de familia ID: ' + familia.id_familia)}
+                    onClick={() => alert('[Navegación] Ver ficha de familia ID: ' + family.id_familia)}
                   >
                     Ver ficha
                   </button>
@@ -270,7 +413,7 @@ function Familias({ onNavegar }) {
                     type="button"
                     className="btn-table-action action-secondary"
                     style={{ backgroundColor: 'rgba(0,0,0,0.04)', borderColor: 'rgba(0,0,0,0.08)', color: '#4a5568' }}
-                    onClick={() => alert('[Navegación] Ver comisión de familia ID: ' + familia.id_familia)}
+                    onClick={() => alert('[Navegación] Ver comisión de familia ID: ' + family.id_familia)}
                   >
                     Comisión
                   </button>
@@ -289,123 +432,260 @@ function Familias({ onNavegar }) {
         </div>
       )}
 
+      {/* ==========================================================================
+          MODAL CONVERSACIONAL: NUEVA FAMILIA
+          ========================================================================== */}
       {showNuevoModal && (
-        <div className="modal-overlay" onClick={() => setShowNuevoModal(false)}>
+        <div className="modal-overlay" onClick={handleCerrarModalCreacion}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>➕ Nueva Familia</h3>
+              <h3>➕ Nueva Familia {familiaCreadaId && `(#${familiaCreadaId})`}</h3>
             </div>
 
-            <form onSubmit={handleCrearFamilia} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1, minHeight: 0 }}>
-              <div className="modal-body">
-                {saveError && (
-                  <div className="login-error" style={{ marginBottom: 'var(--space-md)' }}>
-                    {saveError}
+            {!showPostCreacion ? (
+              /* ETAPA 1: EL FORMULARIO DE RELLENO */
+              <form onSubmit={handleCrearFamilia} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1, minHeight: 0 }}>
+                <div className="modal-body">
+                  {saveError && <div className="login-error" style={{ marginBottom: 'var(--space-md)' }}>{saveError}</div>}
+
+                  <div className="form-group">
+                    <label htmlFor="direccion">Dirección</label>
+                    <input
+                      id="direccion"
+                      name="direccion"
+                      type="text"
+                      value={formData.direccion}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="Ej: Av. Siempreviva 742"
+                    />
                   </div>
-                )}
-                {saveSuccess && (
+
+                  <div className="form-group">
+                    <label htmlFor="telefono">Teléfono</label>
+                    <input
+                      id="telefono"
+                      name="telefono"
+                      type="text"
+                      value={formData.telefono}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="Ej: 555-0101"
+                    />
+                  </div>
+
+                  <div className="form-grid-3">
+                    <div className="form-group">
+                      <label htmlFor="puntaje_prioridad">Puntaje Prioridad</label>
+                      <input
+                        id="puntaje_prioridad"
+                        name="puntaje_prioridad"
+                        type="number"
+                        min="0"
+                        max="20"
+                        value={formData.puntaje_prioridad}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="prioridad_social">Prioridad Social</label>
+                      <select
+                        id="prioridad_social"
+                        name="prioridad_social"
+                        value={formData.prioridad_social}
+                        onChange={handleInputChange}
+                        required
+                      >
+                        <option value="">Seleccionar...</option>
+                        <option value="muy_alta">Muy Alta</option>
+                        <option value="alta">Alta</option>
+                        <option value="media">Media</option>
+                        <option value="baja">Baja</option>
+                        <option value="muy_baja">Muy Baja</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="estado_lista">Estado Lista</label>
+                      <select
+                        id="estado_lista"
+                        name="estado_lista"
+                        value={formData.estado_lista}
+                        onChange={handleInputChange}
+                        required
+                      >
+                        <option value="PRINCIPAL">Principal</option>
+                        <option value="ESPERA">Espera</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="fecha_ingreso">Fecha de Ingreso</label>
+                    <input
+                      id="fecha_ingreso"
+                      name="fecha_ingreso"
+                      type="date"
+                      value={formData.fecha_ingreso}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', cursor: 'pointer' }}>
+                      <input
+                        name="activa"
+                        type="checkbox"
+                        checked={formData.activa}
+                        onChange={handleInputChange}
+                        style={{ width: 'auto', height: 'auto' }}
+                      />
+                      Familia Activa
+                    </label>
+                  </div>
+                </div>
+
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="btn-table-action action-secondary"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.04)', borderColor: 'rgba(0,0,0,0.08)', color: '#4a5568', minHeight: '40px', padding: '0 1rem' }}
+                    onClick={handleCerrarModalCreacion}
+                    disabled={saving}
+                  >
+                    Cancelar
+                  </button>
+                  <button type="submit" className="btn-primary" disabled={saving} style={{ minHeight: '40px' }}>
+                    {saving ? 'Guardando...' : 'Guardar Familia'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* ETAPA 2: ACCIONES COMPLEMENTARIAS AL TENER ÉXITO */
+              <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                <div className="modal-body">
                   <div className="login-success" style={{ marginBottom: 'var(--space-md)' }}>
                     {saveSuccess}
                   </div>
-                )}
+                  <p style={{ textAlign: 'center', color: 'var(--color-text)', marginBottom: 'var(--space-md)' }}>
+                    ¿Qué deseás hacer a continuación con la nueva familia creada?
+                  </p>
+                </div>
+                <div className="modal-footer" style={{ flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    style={{ backgroundColor: '#4a5568' }}
+                    onClick={() => setShowIntegranteModal(true)}
+                  >
+                    👥 Añadir Integrantes a la Familia
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={handleAbrirReferente}
+                  >
+                    👑 Asignar Referente de la Familia
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-table-action action-secondary"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.04)', borderColor: 'rgba(0,0,0,0.08)', color: '#4a5568', minHeight: '40px', width: '100%' }}
+                    onClick={handleCerrarModalCreacion}
+                  >
+                    Terminar y Cerrar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================================================
+          SUBMODAL: AÑADIR INTEGRANTE A LA FAMILIA (NUEVO)
+          ========================================================================== */}
+      {showIntegranteModal && (
+        <div className="modal-overlay" onClick={() => setShowIntegranteModal(false)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+            <div className="modal-header">
+              <h3>👥 Añadir Integrante</h3>
+            </div>
+            <form onSubmit={handleCrearIntegranteSubmit}>
+              <div className="modal-body">
+                {integranteError && <div className="login-error" style={{ marginBottom: 'var(--space-md)' }}>{integranteError}</div>}
+                {integranteSuccess && <div className="login-success" style={{ marginBottom: 'var(--space-md)' }}>{integranteSuccess}</div>}
 
                 <div className="form-group">
-                  <label htmlFor="direccion">Dirección</label>
+                  <label htmlFor="nombre">Nombre</label>
                   <input
-                    id="direccion"
-                    name="direccion"
+                    id="nombre"
+                    name="nombre"
                     type="text"
-                    value={formData.direccion}
-                    onChange={handleInputChange}
+                    value={integranteData.nombre}
+                    onChange={handleIntegranteInputChange}
                     required
-                    placeholder="Ej: Av. Siempreviva 742"
+                    placeholder="Ej: Bart"
                   />
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="telefono">Teléfono</label>
+                  <label htmlFor="apellido">Apellido</label>
                   <input
-                    id="telefono"
-                    name="telefono"
+                    id="apellido"
+                    name="apellido"
                     type="text"
-                    value={formData.telefono}
-                    onChange={handleInputChange}
+                    value={integranteData.apellido}
+                    onChange={handleIntegranteInputChange}
                     required
-                    placeholder="Ej: 555-0101"
+                    placeholder="Ej: Simpson"
                   />
                 </div>
 
-                <div className="form-grid-3">
-                  <div className="form-group">
-                    <label htmlFor="puntaje_prioridad">Puntaje Prioridad</label>
-                    <input
-                      id="puntaje_prioridad"
-                      name="puntaje_prioridad"
-                      type="number"
-                      min="0"
-                      max="20"
-                      value={formData.puntaje_prioridad}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="prioridad_social">Prioridad Social</label>
-                    <select
-                      id="prioridad_social"
-                      name="prioridad_social"
-                      value={formData.prioridad_social}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="">Seleccionar...</option>
-                      <option value="muy_alta">Muy Alta</option>
-                      <option value="alta">Alta</option>
-                      <option value="media">Media</option>
-                      <option value="baja">Baja</option>
-                      <option value="muy_baja">Muy Baja</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="estado_lista">Estado Lista</label>
-                    <select
-                      id="estado_lista"
-                      name="estado_lista"
-                      value={formData.estado_lista}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="PRINCIPAL">Principal</option>
-                      <option value="ESPERA">Espera</option>
-                    </select>
-                  </div>
-                </div>
-
                 <div className="form-group">
-                  <label htmlFor="fecha_ingreso">Fecha de Ingreso</label>
+                  <label htmlFor="fecha_nacimiento">Fecha de Nacimiento</label>
                   <input
-                    id="fecha_ingreso"
-                    name="fecha_ingreso"
+                    id="fecha_nacimiento"
+                    name="fecha_nacimiento"
                     type="date"
-                    value={formData.fecha_ingreso}
-                    onChange={handleInputChange}
+                    value={integranteData.fecha_nacimiento}
+                    onChange={handleIntegranteInputChange}
                     required
                   />
                 </div>
 
-                <div className="form-group">
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', cursor: 'pointer' }}>
+                <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 'var(--space-sm)' }}>
+                  <div className="form-group">
+                    <label htmlFor="tipo_documento">Tipo Doc.</label>
+                    <select
+                      id="tipo_documento"
+                      name="tipo_documento"
+                      value={integranteData.tipo_documento}
+                      onChange={handleIntegranteInputChange}
+                      required
+                    >
+                      <option value="DNI">DNI</option>
+                      <option value="LC">LC</option>
+                      <option value="LE">LE</option>
+                      <option value="PASAPORTE">Pasaporte</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="numero_documento">Número Documento</label>
                     <input
-                      name="activa"
-                      type="checkbox"
-                      checked={formData.activa}
-                      onChange={handleInputChange}
-                      style={{ width: 'auto', height: 'auto' }}
+                      id="numero_documento"
+                      name="numero_documento"
+                      type="text"
+                      value={integranteData.numero_documento}
+                      onChange={handleIntegranteInputChange}
+                      required
+                      placeholder="Ej: 45123456"
                     />
-                    Familia Activa
-                  </label>
+                  </div>
                 </div>
               </div>
 
@@ -413,22 +693,88 @@ function Familias({ onNavegar }) {
                 <button
                   type="button"
                   className="btn-table-action action-secondary"
-                  style={{ backgroundColor: 'rgba(0,0,0,0.04)', borderColor: 'rgba(0,0,0,0.08)', color: '#4a5568', minHeight: '40px', padding: '0 1rem' }}
-                  onClick={() => setShowNuevoModal(false)}
-                  disabled={saving}
+                  onClick={() => setShowIntegranteModal(false)}
+                  disabled={savingIntegrante}
                 >
-                  Cancelar
+                  Volver atrás
                 </button>
                 <button
                   type="submit"
                   className="btn-primary"
-                  disabled={saving}
-                  style={{ minHeight: '40px' }}
+                  disabled={savingIntegrante}
                 >
-                  {saving ? 'Guardando...' : 'Guardar Familia'}
+                  {savingIntegrante ? 'Guardando...' : 'Añadir Miembro'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================================================
+          SUBMODAL: ASIGNACIÓN DE REFERENTE (+18 ADULTO)
+          ========================================================================== */}
+      {showReferenteModal && (
+        <div className="modal-overlay" onClick={() => setShowReferenteModal(false)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '450px' }}>
+            <div className="modal-header">
+              <h3>👑 Seleccionar Referente</h3>
+            </div>
+            <div className="modal-body">
+              {referenteError && <div className="login-error" style={{ marginBottom: 'var(--space-md)' }}>{referenteError}</div>}
+              {referenteSuccess && <div className="login-success" style={{ marginBottom: 'var(--space-md)' }}>{referenteSuccess}</div>}
+
+              {loadingIntegrantes && (
+                <p style={{ textAlign: 'center', color: 'var(--color-primary)' }}>Cargando integrantes de la familia...</p>
+              )}
+
+              {integrantesError && <div className="login-error" style={{ marginBottom: 'var(--space-md)' }}>{integrantesError}</div>}
+
+              {!loadingIntegrantes && !integrantesError && integrantes.length === 0 && (
+                <div className="login-error" style={{ backgroundColor: '#fffaf0', color: '#dd6b20', borderColor: '#fbd38d' }}>
+                  ⚠️ No hay integrantes adultos en esta familia. Primero debés añadir integrantes que tengan la categoría 'ADULTO'.
+                </div>
+              )}
+
+              {!loadingIntegrantes && integrantes.length > 0 && (
+                <div className="form-group">
+                  <label htmlFor="integranteSelect">Elegí un integrante adulto disponible:</label>
+                  <select
+                    id="integranteSelect"
+                    value={integranteSeleccionado}
+                    onChange={(e) => setIntegranteSeleccionado(e.target.value)}
+                    required
+                  >
+                    <option value="">Seleccionar integrante...</option>
+                    {integrantes.map((integrante) => (
+                      <option key={integrante.id_integrante} value={integrante.id_integrante}>
+                        {integrante.apellido}, {integrante.nombre} — DNI {integrante.numero_documento}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn-table-action action-secondary"
+                style={{ backgroundColor: 'rgba(0,0,0,0.04)', borderColor: 'rgba(0,0,0,0.08)', color: '#4a5568', minHeight: '40px', padding: '0 1rem' }}
+                onClick={() => setShowReferenteModal(false)}
+                disabled={asignandoReferente}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={handleAsignarReferente}
+                disabled={asignandoReferente || !integranteSeleccionado}
+                style={{ minHeight: '40px' }}
+              >
+                {asignandoReferente ? 'Asignando...' : 'Asignar Referente'}
+              </button>
+            </div>
           </div>
         </div>
       )}

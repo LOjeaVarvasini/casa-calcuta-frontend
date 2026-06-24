@@ -103,17 +103,83 @@ export async function getFamiliasRequest(queryParams = '') {
 }
 
 /**
- * Crea una nueva familia en el sistema con sanitización de tipos para Laravel.
- * @param {Object} payload - Datos de la nueva familia según contrato de API.
+ * Crea una nueva familia en el sistema.
+ * @param {Object} payload Datos sanitizados de la familia.
  */
 export async function createFamiliaRequest(payload) {
-  const token = localStorage.getItem('access_token')
+  const token = localStorage.getItem('access_token'); // 🍏 Recuperamos el token fresco del localStorage
 
   return apiRequest('/api/familias', {
     method: 'POST',
+    redirect: 'manual', // Evita desvíos locos de CORS
     headers: {
-      Authorization: `Bearer ${token}`,
+      'Authorization': `Bearer ${token}`, // 👑 Inyectamos la credencial real
+      'Accept': 'application/json',       // Forzamos JSON
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * Obtiene los integrantes de una familia.
+ * @param {number} familiaId
+ * @returns {Promise<Array>} Lista de integrantes.
+ */
+export async function getIntegrantesRequest(familiaId) {
+  const token = localStorage.getItem('access_token')
+  const id = parseInt(familiaId, 10)
+
+  return apiRequest(`/api/familias/${id}/integrantes`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
   })
+}
+
+/**
+ * Asigna un integrante existente como referente de la familia.
+ * @param {number|string} familiaId
+ * @param {number|string} integranteId
+ * @returns {Promise<Object>}
+ */
+export async function asignarReferenteRequest(familiaId, integranteId) {
+  const token = localStorage.getItem('access_token');
+  const idParseado = parseInt(integranteId, 10);
+
+  return apiRequest(`/api/familias/${parseInt(familiaId, 10)}/referente`, {
+    method: 'PUT',
+    redirect: 'manual', 
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json', // 🍏 CRÍTICO: Asegura que Laravel entienda el JSON
+    },
+    body: JSON.stringify({ 
+      integrante_id: idParseado, // Opción A
+      id_integrante: idParseado  // Opción B (Doble juego seguro anti-error de validación)
+    }),
+  });
+}
+
+
+/**
+ * Crea un nuevo integrante y lo asocia a una familia.
+ * @param {Object} payload Datos sanitizados del integrante.
+ */
+export async function createIntegranteRequest(payload) {
+  const token = localStorage.getItem('access_token');
+
+  return apiRequest('/api/integrantes', {
+    method: 'POST',
+    redirect: 'manual', // 🍏 Blindaje anti-CORS si Laravel mete redirección web post-POST
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
 }
