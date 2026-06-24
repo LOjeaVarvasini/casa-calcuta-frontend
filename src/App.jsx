@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Login from './pages/Login/index.jsx'
 import Dashboard from './pages/Dashboard/index.jsx'
 import Familias from './pages/Familias/index.jsx'
+import Asistencia from './pages/Asistencia/index.jsx'
 import Sidebar from './components/common/Sidebar.jsx'
 import BottomNav from './components/common/BottomNav.jsx'
 import { logoutRequest, meRequest } from './config/api.js'
@@ -10,6 +11,7 @@ function App() {
   const [session, setSession] = useState(null)
   const [booting, setBooting] = useState(true)
   const [pantallaActual, setPantallaActual] = useState('dashboard')
+  const [parametrosNavegacion, setParametrosNavegacion] = useState(null)
 
   // Restaurar la sesión al cargar la app de forma real
   useEffect(() => {
@@ -36,7 +38,7 @@ function App() {
 
   const handleLogin = ({ accessToken, user }) => {
     setSession({ accessToken, user })
-    setPantallaActual('dashboard') 
+    setPantallaActual('dashboard')
   }
 
   const handleLogout = async () => {
@@ -52,11 +54,12 @@ function App() {
     }
   }
 
-  const handleNavegar = (pantalla) => {
+  const handleNavegar = (pantalla, parametros = null) => {
     if (pantalla === 'login') {
       handleLogout()
     } else {
       setPantallaActual(pantalla)
+      setParametrosNavegacion(parametros)
     }
   }
 
@@ -87,6 +90,10 @@ function App() {
             <h1>
               {pantallaActual === 'dashboard' && 'Panel Principal'}
               {pantallaActual === 'familias' && 'Padrón Único de Familias'}
+              {pantallaActual === 'asistencia' && 'Registro de Asistencia y Entrega'}
+              {pantallaActual === 'listas' && 'Listas de Espera'}
+              {pantallaActual === 'donaciones' && 'Gestión de Donaciones'}
+              {pantallaActual === 'usuarios' && 'Administración de Usuarios'}
             </h1>
           </div>
           <div style={{ fontSize: '0.875rem', color: '#718096', fontWeight: 500 }}>
@@ -98,6 +105,7 @@ function App() {
         <main className="main-content">
           {pantallaActual === 'dashboard' && <Dashboard onNavegar={handleNavegar} />}
           {pantallaActual === 'familias' && <Familias onNavegar={handleNavegar} />}
+          {pantallaActual === 'asistencia' && <Asistencia onNavigate={handleNavegar} parametros={parametrosNavegacion} />}
         </main>
 
       </div>
