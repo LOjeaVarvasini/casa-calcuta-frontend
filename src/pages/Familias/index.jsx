@@ -5,7 +5,8 @@ import {
   getIntegrantesRequest,
   asignarReferenteRequest,
   createIntegranteRequest,
-  getFichaFamiliaRequest, // 🍏 Importamos la nueva petición de lectura
+  getFichaFamiliaRequest,
+  deleteFamiliaRequest, // 🍏 Importamos la nueva función de borrado
 } from '../../config/api.js';
 import './familias.css';
 
@@ -39,11 +40,12 @@ function Familias({ onNavegar }) {
   const [familiaCreadaId, setFamiliaCreadaId] = useState(null);
   const [showPostCreacion, setShowPostCreacion] = useState(false);
 
-  // Estados del modal "Ver Ficha" (Nuevo)
+  // Estados del modal "Ver Ficha"
   const [showFichaModal, setShowFichaModal] = useState(false);
   const [fichaData, setFichaData] = useState(null);
   const [loadingFicha, setLoadingFicha] = useState(false);
   const [fichaError, setFichaError] = useState(null);
+  const [deleting, setDeleting] = useState(false); // 🍏 Loader específico para la acción de borrar
 
   // Estados del submodal de Añadir Integrante
   const [showIntegranteModal, setShowIntegranteModal] = useState(false);
@@ -117,10 +119,10 @@ function Familias({ onNavegar }) {
   }, [cargarFamilias]);
 
   // ==========================================================================
-  // FLUJO DE CONTROL DE "VER FICHA" (Nuevo)
+  // FLUJO DE CONTROL DE "VER FICHA"
   // ==========================================================================
   const handleAbrirFicha = async (idFamilia) => {
-    setFamiliaCreadaId(idFamilia); // Vinculamos como el ID activo para operaciones secundarias
+    setFamiliaCreadaId(idFamilia); 
     setShowFichaModal(true);
     setLoadingFicha(true);
     setFichaError(null);
@@ -143,6 +145,35 @@ function Familias({ onNavegar }) {
       setFichaData(data);
     } catch (err) {
       console.error('Error refrescando ficha técnica:', err);
+    }
+  };
+
+  // ==========================================================================
+  // ACCIÓN DE ELIMINACIÓN DE LA FAMILIA (Nuevo)
+  // ==========================================================================
+  const handleEliminarFamilia = async () => {
+    if (!familiaCreadaId) return;
+
+    const seguro = window.confirm('🚨 ¿Estás absolutamente seguro de eliminar esta familia? Esta acción borrará el registro de forma permanente en el servidor.');
+    if (!seguro) return;
+
+    setDeleting(true);
+    setFichaError(null);
+
+    try {
+      await deleteFamiliaRequest(familiaCreadaId);
+      
+      // Cerramos modal y reseteamos punteros
+      setShowFichaModal(false);
+      setFamiliaCreadaId(null);
+      setFichaData(null);
+
+      // Sincronizamos la grilla de inmediato
+      cargarFamilias();
+    } catch (err) {
+      setFichaError(err.message || 'Error del servidor al intentar eliminar la familia.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -234,7 +265,7 @@ function Familias({ onNavegar }) {
     setIntegranteSuccess(null);
 
     const payload = {
-      name: integranteData.nombre, // Cambiado 'nombre' por 'name' según estructura estándar Laravel del proyecto
+      name: integranteData.nombre,
       nombre: integranteData.nombre,
       apellido: integranteData.apellido,
       fecha_nacimiento: integranteData.fecha_nacimiento,
@@ -257,7 +288,7 @@ function Familias({ onNavegar }) {
       });
 
       cargarFamilias(); 
-      if (showFichaModal) refrescarFichaEnCaliente(); // Mantiene actualizada la vista de origen
+      if (showFichaModal) refrescarFichaEnCaliente();
 
       setTimeout(() => {
         setIntegranteSuccess(null);
@@ -309,7 +340,6 @@ function Familias({ onNavegar }) {
         setShowReferenteModal(false);
         setReferenteSuccess(null);
         
-        // Si operamos desde creación masiva, limpiamos y cerramos todo
         if (showPostCreacion) {
           setSearchTerm('');
           setPriorityFilter('');
@@ -319,7 +349,6 @@ function Familias({ onNavegar }) {
           setSaveSuccess(null);
           cargarFamilias({ searchTerm: '', priorityFilter: '' });
         } else {
-          // Si operamos desde Ficha, solo refrescamos estados locales
           cargarFamilias();
           refrescarFichaEnCaliente();
         }
@@ -467,10 +496,10 @@ function Familias({ onNavegar }) {
       )}
 
       {/* ==========================================================================
-          MODAL: VER FICHA EXTENDIDA DE FAMILIA (Nuevo)
+          MODAL: VER FICHA EXTENDIDA DE FAMILIA
           ========================================================================== */}
       {showFichaModal && (
-        <div className="modal-overlay" onClick={() => { setShowFichaModal(false); setFamiliaCreadaId(null); }}>
+        <div className="modal-overlay" onClick={() => { if (!deleting) { setShowFichaModal(false); setFamiliaCreadaId(null); } }}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '650px' }}>
             <div className="modal-header">
               <h3>📋 Ficha Técnica de Familia {fichaData && `#${fichaData.id_familia}`}</h3>
@@ -482,7 +511,6 @@ function Familias({ onNavegar }) {
 
               {fichaData && (
                 <div>
-                  {/* Datos Básicos */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)', marginBottom: 'var(--space-md)', borderBottom: '1px solid #e2e8f0', paddingBottom: 'var(--space-sm)' }}>
                     <div><strong>Dirección:</strong> {fichaData.direccion || '[N/D]'}</div>
                     <div><strong>Teléfono:</strong> {fichaData.telefono || '[N/D]'}</div>
@@ -492,7 +520,6 @@ function Familias({ onNavegar }) {
                     </div>
                   </div>
 
-                  {/* Bloque de Referencia */}
                   <div style={{ backgroundColor: '#f7fafc', padding: 'var(--space-sm)', borderRadius: '6px', marginBottom: 'var(--space-md)' }}>
                     <h4 style={{ margin: '0 0 var(--space-xs) 0', fontSize: '1rem', color: 'var(--color-primary)' }}>👑 Referente Designado</h4>
                     {fichaData.referente ? (
@@ -504,7 +531,6 @@ function Familias({ onNavegar }) {
                     )}
                   </div>
 
-                  {/* Bloque de Métricas e Indicadores Sociales */}
                   <div style={{ marginBottom: 'var(--space-md)' }}>
                     <h4 style={{ margin: '0 0 var(--space-xs) 0', fontSize: '1rem' }}>📊 Puntajes de Evaluación</h4>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-xs)', textAlign: 'center' }}>
@@ -537,7 +563,6 @@ function Familias({ onNavegar }) {
                     </div>
                   </div>
 
-                  {/* Auditoría del Servidor */}
                   <div style={{ fontSize: '0.8rem', color: '#718096', borderTop: '1px solid #e2e8f0', paddingTop: 'var(--space-xs)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-xs)' }}>
                     <div><strong>Registrado por:</strong> {fichaData.registrado_por?.nombre} {fichaData.registrado_por?.apellido}</div>
                     <div><strong>Evaluado por:</strong> {fichaData.evaluado_por ? `${fichaData.evaluado_por.nombre} ${fichaData.evaluado_por.apellido}` : 'Pendiente'}</div>
@@ -546,14 +571,24 @@ function Familias({ onNavegar }) {
               )}
             </div>
 
-            {/* Acciones de gestión integradas directo en la ficha */}
             <div className="modal-footer" style={{ gap: 'var(--space-sm)' }}>
+              {/* 🍏 BOTÓN ELIMINAR ESTÍTICO ROJO */}
+              <button
+                type="button"
+                className="btn-table-action"
+                style={{ backgroundColor: '#e53e3e', color: '#fff', borderColor: '#e53e3e', minHeight: '40px', padding: '0 1rem' }}
+                onClick={handleEliminarFamilia}
+                disabled={loadingFicha || deleting}
+              >
+                {deleting ? 'Eliminando...' : '🗑️ Eliminar Familia'}
+              </button>
+
               <button
                 type="button"
                 className="btn-primary"
-                style={{ backgroundColor: '#4a5568', padding: '0 1rem', minHeight: '40px' }}
+                style={{ backgroundColor: '#4a5568', padding: '0 1rem', minHeight: '40px', marginLeft: 'auto' }}
                 onClick={() => setShowIntegranteModal(true)}
-                disabled={loadingFicha}
+                disabled={loadingFicha || deleting}
               >
                 👥 Añadir Integrante
               </button>
@@ -562,17 +597,18 @@ function Familias({ onNavegar }) {
                 className="btn-primary"
                 style={{ padding: '0 1rem', minHeight: '40px' }}
                 onClick={handleAbrirReferente}
-                disabled={loadingFicha}
+                disabled={loadingFicha || deleting}
               >
                 👑 Cambiar Referente
               </button>
               <button
                 type="button"
                 className="btn-table-action action-secondary"
-                style={{ minHeight: '40px', marginLeft: 'auto' }}
+                style={{ minHeight: '40px' }}
                 onClick={() => { setShowFichaModal(false); setFamiliaCreadaId(null); }}
+                disabled={deleting}
               >
-                Cerrar Ficha
+                Cerrar
               </button>
             </div>
           </div>

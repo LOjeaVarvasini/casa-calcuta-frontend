@@ -201,3 +201,22 @@ export async function getFichaFamiliaRequest(familiaId) {
     },
   });
 }
+
+
+/**
+ * Elimina una familia del sistema de forma permanente.
+ * @param {number|string} familiaId
+ * @returns {Promise<Object>}
+ */
+export async function deleteFamiliaRequest(familiaId) {
+  const token = localStorage.getItem('access_token');
+
+  return apiRequest(`/api/familias/${parseInt(familiaId, 10)}`, {
+    method: 'DELETE',
+    redirect: 'manual',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+    },
+  });
+}
