@@ -6,7 +6,7 @@ import {
   asignarReferenteRequest,
   createIntegranteRequest,
   getFichaFamiliaRequest,
-  deleteFamiliaRequest, // 🍏 Importamos la nueva función de borrado
+  deleteFamiliaRequest,
 } from '../../config/api.js';
 import './familias.css';
 
@@ -45,7 +45,7 @@ function Familias({ onNavegar }) {
   const [fichaData, setFichaData] = useState(null);
   const [loadingFicha, setLoadingFicha] = useState(false);
   const [fichaError, setFichaError] = useState(null);
-  const [deleting, setDeleting] = useState(false); // 🍏 Loader específico para la acción de borrar
+  const [deleting, setDeleting] = useState(false);
 
   // Estados del submodal de Añadir Integrante
   const [showIntegranteModal, setShowIntegranteModal] = useState(false);
@@ -77,7 +77,6 @@ function Familias({ onNavegar }) {
     setLoading(true);
     setError(null);
 
-    const terminoBusqueda = filtros.searchTerm !== undefined ? filtros.searchTerm : searchTerm;
     const filtroPrioridad = filtros.priorityFilter !== undefined ? filtros.priorityFilter : priorityFilter;
 
     try {
@@ -96,8 +95,9 @@ function Familias({ onNavegar }) {
         queryParams.append('prioridad_social', valorReal);
       }
 
-      if (terminoBusqueda) {
-        queryParams.append('search', terminoBusqueda);
+      // Dejamos el envío por si el backend se actualiza, pero controlamos en el front
+      if (searchTerm) {
+        queryParams.append('search', searchTerm);
       }
 
       const data = await getFamiliasRequest(queryParams.toString());
@@ -117,6 +117,27 @@ function Familias({ onNavegar }) {
   useEffect(() => {
     cargarFamilias();
   }, [cargarFamilias]);
+
+  // ==========================================================================
+  // FILTRADO EN CALIENTE (CLIENT-SIDE FALLBACK ANTI-BUG BACKEND)
+  // ==========================================================================
+  const familiasFiltradas = familias.filter((familia) => {
+    if (!searchTerm) return true;
+    
+    const term = searchTerm.toLowerCase().trim();
+    const referente = familia.referente;
+
+    // Si no tiene referente, permitimos buscar por el string "Familia #ID"
+    if (!referente) {
+      return `familia #${familia.id_familia}`.toLowerCase().includes(term);
+    }
+
+    const apellido = referente.apellido ? referente.apellido.toLowerCase() : '';
+    const nombre = referente.nombre ? referente.nombre.toLowerCase() : '';
+    const dni = referente.numero_documento ? referente.numero_documento.toLowerCase() : '';
+
+    return apellido.includes(term) || nombre.includes(term) || dni.includes(term);
+  });
 
   // ==========================================================================
   // FLUJO DE CONTROL DE "VER FICHA"
@@ -149,7 +170,7 @@ function Familias({ onNavegar }) {
   };
 
   // ==========================================================================
-  // ACCIÓN DE ELIMINACIÓN DE LA FAMILIA (Nuevo)
+  // ACCIÓN DE ELIMINACIÓN DE LA FAMILIA
   // ==========================================================================
   const handleEliminarFamilia = async () => {
     if (!familiaCreadaId) return;
@@ -162,13 +183,9 @@ function Familias({ onNavegar }) {
 
     try {
       await deleteFamiliaRequest(familiaCreadaId);
-      
-      // Cerramos modal y reseteamos punteros
       setShowFichaModal(false);
       setFamiliaCreadaId(null);
       setFichaData(null);
-
-      // Sincronizamos la grilla de inmediato
       cargarFamilias();
     } catch (err) {
       setFichaError(err.message || 'Error del servidor al intentar eliminar la familia.');
@@ -431,13 +448,14 @@ function Familias({ onNavegar }) {
 
       {!loading && !error && (
         <section className="families-grid">
-          {familias.length === 0 && (
+          {familiasFiltradas.length === 0 && (
             <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px 0', color: '#718096' }}>
               <p>No se encontraron familias.</p>
             </div>
           )}
 
-          {familias.map((family) => (
+          {/* 🍏 MAPEAMOS DESDE EL ARRAY FILTRADO EN CALIENTE */}
+          {familiasFiltradas.map((family) => (
             <div className="family-card" key={family.id_familia}>
               <header className="card-family-header">
                 <div>
@@ -572,7 +590,6 @@ function Familias({ onNavegar }) {
             </div>
 
             <div className="modal-footer" style={{ gap: 'var(--space-sm)' }}>
-              {/* 🍏 BOTÓN ELIMINAR ESTÍTICO ROJO */}
               <button
                 type="button"
                 className="btn-table-action"
