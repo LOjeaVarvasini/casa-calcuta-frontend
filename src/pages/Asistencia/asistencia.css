@@ -59,8 +59,13 @@
   display: inline-block;
 }
 
-.dot-ok { background-color: var(--color-success); }
-.dot-danger { background-color: var(--color-danger); }
+.dot-ok {
+  background-color: var(--color-success);
+}
+
+.dot-danger {
+  background-color: var(--color-danger);
+}
 
 /* Nombres dentro de la planilla */
 .attendance-family-name {
@@ -73,15 +78,18 @@
   color: #718096;
 }
 
-/* Animación sutil para el label "No Retiró" cuando está activo y hay riesgo */
+/* Animación de pulso para etiqueta de alerta en toggle */
 .pulse-warning {
-  animation: pulseWarning 2s infinite;
+  animation: pulseWarning 1.5s infinite;
 }
 
 @keyframes pulseWarning {
-  0% { opacity: 1; }
-  50% { opacity: 0.7; }
-  100% { opacity: 1; }
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 /* Ajustes adaptativos para escritorio */
@@ -92,6 +100,7 @@
     align-items: center;
     padding: var(--space-lg);
   }
+
   .summary-value {
     font-size: var(--text-xl);
   }
