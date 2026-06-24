@@ -658,8 +658,20 @@ body {
   box-shadow: var(--shadow-md);
   width: 100%;
   max-width: 480px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   animation: modalScaleIn 0.2s ease-out;
+  margin: auto;
+}
+
+.modal-box > form {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
 }
 
 .modal-header {
@@ -668,6 +680,7 @@ body {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+  flex-shrink: 0;
 }
 
 .modal-header.alert-danger {
@@ -686,6 +699,10 @@ body {
   font-size: var(--text-sm);
   color: var(--color-text);
   line-height: 1.5;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal-footer {
@@ -695,6 +712,7 @@ body {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-sm);
+  flex-shrink: 0;
 }
 
 @keyframes modalScaleIn {
@@ -756,5 +774,9 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: var(--space-lg);
+  }
+
+  .modal-box {
+    max-height: 80vh;
   }
 }

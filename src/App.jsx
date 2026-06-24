@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Login from './pages/Login/index.jsx'
 import Dashboard from './pages/Dashboard/index.jsx'
+import Familias from './pages/Familias/index.jsx'
 import Sidebar from './components/common/Sidebar.jsx'
 import BottomNav from './components/common/BottomNav.jsx'
 import { logoutRequest, meRequest } from './config/api.js'
@@ -96,11 +97,7 @@ function App() {
         {/* Visor Dinámico de Pantallas con Scroll Controlado */}
         <main className="main-content">
           {pantallaActual === 'dashboard' && <Dashboard onNavegar={handleNavegar} />}
-          {pantallaActual === 'familias' && (
-            <div style={{ textAlign: 'center', padding: '40px' }}>
-              <h2>[Próximamente: Componente Padrón de Familias]</h2>
-            </div>
-          )}
+          {pantallaActual === 'familias' && <Familias onNavegar={handleNavegar} />}
         </main>
 
       </div>
