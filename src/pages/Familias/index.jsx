@@ -4,7 +4,8 @@ import {
   createFamiliaRequest,
   getIntegrantesRequest,
   asignarReferenteRequest,
-  createIntegranteRequest, // 🍏 Importamos la nueva petición
+  createIntegranteRequest,
+  getFichaFamiliaRequest, // 🍏 Importamos la nueva petición de lectura
 } from '../../config/api.js';
 import './familias.css';
 
@@ -34,9 +35,15 @@ function Familias({ onNavegar }) {
   const [saveError, setSaveError] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(null);
 
-  // Estados post-creación (Control de botones de acción)
+  // Estados compartidos de conectividad (ID activo que se está manipulando)
   const [familiaCreadaId, setFamiliaCreadaId] = useState(null);
   const [showPostCreacion, setShowPostCreacion] = useState(false);
+
+  // Estados del modal "Ver Ficha" (Nuevo)
+  const [showFichaModal, setShowFichaModal] = useState(false);
+  const [fichaData, setFichaData] = useState(null);
+  const [loadingFicha, setLoadingFicha] = useState(false);
+  const [fichaError, setFichaError] = useState(null);
 
   // Estados del submodal de Añadir Integrante
   const [showIntegranteModal, setShowIntegranteModal] = useState(false);
@@ -108,6 +115,36 @@ function Familias({ onNavegar }) {
   useEffect(() => {
     cargarFamilias();
   }, [cargarFamilias]);
+
+  // ==========================================================================
+  // FLUJO DE CONTROL DE "VER FICHA" (Nuevo)
+  // ==========================================================================
+  const handleAbrirFicha = async (idFamilia) => {
+    setFamiliaCreadaId(idFamilia); // Vinculamos como el ID activo para operaciones secundarias
+    setShowFichaModal(true);
+    setLoadingFicha(true);
+    setFichaError(null);
+    setFichaData(null);
+
+    try {
+      const data = await getFichaFamiliaRequest(idFamilia);
+      setFichaData(data);
+    } catch (err) {
+      setFichaError(err.message || 'Error al cargar los detalles de la ficha.');
+    } finally {
+      setLoadingFicha(false);
+    }
+  };
+
+  const refrescarFichaEnCaliente = async () => {
+    if (!familiaCreadaId) return;
+    try {
+      const data = await getFichaFamiliaRequest(familiaCreadaId);
+      setFichaData(data);
+    } catch (err) {
+      console.error('Error refrescando ficha técnica:', err);
+    }
+  };
 
   // ==========================================================================
   // MANEJO DEL FORMULARIO DE NUEVA FAMILIA
@@ -196,22 +233,21 @@ function Familias({ onNavegar }) {
     setIntegranteError(null);
     setIntegranteSuccess(null);
 
-    // Sanitización estricta bajo requerimientos de la DB del servidor cloud
     const payload = {
+      name: integranteData.nombre, // Cambiado 'nombre' por 'name' según estructura estándar Laravel del proyecto
       nombre: integranteData.nombre,
       apellido: integranteData.apellido,
       fecha_nacimiento: integranteData.fecha_nacimiento,
-      tipo_documento: integranteData.tipo_documento.toUpperCase(), // 🍏 Forzamos mayúsculas
+      tipo_documento: integranteData.tipo_documento.toUpperCase(),
       numero_documento: integranteData.numero_documento,
-      referente: 0, // 🍏 Nace por defecto como no-referente (numérico)
-      familia_id: parseInt(familiaCreadaId, 10), // 🍏 Forzamos entero
+      referente: 0,
+      familia_id: parseInt(familiaCreadaId, 10),
     };
 
     try {
       await createIntegranteRequest(payload);
       setIntegranteSuccess(`¡${integranteData.nombre} fue añadido correctamente!`);
       
-      // Limpiamos los campos del form de integrante para permitir cargas consecutivas
       setIntegranteData({
         nombre: '',
         apellido: '',
@@ -220,7 +256,8 @@ function Familias({ onNavegar }) {
         numero_documento: '',
       });
 
-      cargarFamilias(); // Sincroniza la grilla por detrás
+      cargarFamilias(); 
+      if (showFichaModal) refrescarFichaEnCaliente(); // Mantiene actualizada la vista de origen
 
       setTimeout(() => {
         setIntegranteSuccess(null);
@@ -269,26 +306,23 @@ function Familias({ onNavegar }) {
       setReferenteSuccess('Referente asignado correctamente.');
 
       setTimeout(() => {
-        setSearchTerm('');
-        setPriorityFilter('');
-        
-        setShowNuevoModal(false);
-        setShowPostCreacion(false);
         setShowReferenteModal(false);
-        setFamiliaCreadaId(null);
+        setReferenteSuccess(null);
         
-        setFormData({
-          direccion: '',
-          telefono: '',
-          puntaje_prioridad: '',
-          prioridad_social: '',
-          estado_lista: 'PRINCIPAL',
-          fecha_ingreso: '',
-          activa: true,
-        });
-        setSaveSuccess(null);
-
-        cargarFamilias({ searchTerm: '', priorityFilter: '' });
+        // Si operamos desde creación masiva, limpiamos y cerramos todo
+        if (showPostCreacion) {
+          setSearchTerm('');
+          setPriorityFilter('');
+          setShowNuevoModal(false);
+          setShowPostCreacion(false);
+          setFamiliaCreadaId(null);
+          setSaveSuccess(null);
+          cargarFamilias({ searchTerm: '', priorityFilter: '' });
+        } else {
+          // Si operamos desde Ficha, solo refrescamos estados locales
+          cargarFamilias();
+          refrescarFichaEnCaliente();
+        }
       }, 1500);
     } catch (err) {
       setReferenteError(err.message || 'Error al asignar referente.');
@@ -405,7 +439,7 @@ function Familias({ onNavegar }) {
                   <button
                     type="button"
                     className="btn-table-action"
-                    onClick={() => alert('[Navegación] Ver ficha de familia ID: ' + family.id_familia)}
+                    onClick={() => handleAbrirFicha(family.id_familia)}
                   >
                     Ver ficha
                   </button>
@@ -433,7 +467,120 @@ function Familias({ onNavegar }) {
       )}
 
       {/* ==========================================================================
-          MODAL CONVERSACIONAL: NUEVA FAMILIA
+          MODAL: VER FICHA EXTENDIDA DE FAMILIA (Nuevo)
+          ========================================================================== */}
+      {showFichaModal && (
+        <div className="modal-overlay" onClick={() => { setShowFichaModal(false); setFamiliaCreadaId(null); }}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '650px' }}>
+            <div className="modal-header">
+              <h3>📋 Ficha Técnica de Familia {fichaData && `#${fichaData.id_familia}`}</h3>
+            </div>
+
+            <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+              {loadingFicha && <p style={{ textAlign: 'center', color: 'var(--color-primary)' }}>Cargando ficha extendida...</p>}
+              {fichaError && <div className="login-error">{fichaError}</div>}
+
+              {fichaData && (
+                <div>
+                  {/* Datos Básicos */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)', marginBottom: 'var(--space-md)', borderBottom: '1px solid #e2e8f0', paddingBottom: 'var(--space-sm)' }}>
+                    <div><strong>Dirección:</strong> {fichaData.direccion || '[N/D]'}</div>
+                    <div><strong>Teléfono:</strong> {fichaData.telefono || '[N/D]'}</div>
+                    <div><strong>Fecha Ingreso:</strong> {new Date(fichaData.fecha_ingreso).toLocaleDateString('es-AR')}</div>
+                    <div>
+                      <strong>Estado:</strong> <span className={`badge ${fichaData.estado_lista === 'PRINCIPAL' ? 'badge-success' : 'badge-primary'}`}>{fichaData.estado_lista}</span>
+                    </div>
+                  </div>
+
+                  {/* Bloque de Referencia */}
+                  <div style={{ backgroundColor: '#f7fafc', padding: 'var(--space-sm)', borderRadius: '6px', marginBottom: 'var(--space-md)' }}>
+                    <h4 style={{ margin: '0 0 var(--space-xs) 0', fontSize: '1rem', color: 'var(--color-primary)' }}>👑 Referente Designado</h4>
+                    {fichaData.referente ? (
+                      <p style={{ margin: 0 }}>
+                        {fichaData.referente.apellido}, {fichaData.referente.nombre} &bull; <strong>{fichaData.referente.tipo_documento}:</strong> {fichaData.referente.numero_documento}
+                      </p>
+                    ) : (
+                      <p style={{ margin: 0, color: '#e53e3e', fontWeight: 500 }}>⚠️ Sin referente asignado en el sistema.</p>
+                    )}
+                  </div>
+
+                  {/* Bloque de Métricas e Indicadores Sociales */}
+                  <div style={{ marginBottom: 'var(--space-md)' }}>
+                    <h4 style={{ margin: '0 0 var(--space-xs) 0', fontSize: '1rem' }}>📊 Puntajes de Evaluación</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-xs)', textAlign: 'center' }}>
+                      <div style={{ background: '#edf2f7', padding: 'var(--space-xs)', borderRadius: '4px' }}>
+                        <small style={{ display: 'block', color: '#4a5568' }}>Prioridad</small>
+                        <strong style={{ fontSize: '1.2rem', color: 'var(--color-primary)' }}>{fichaData.puntaje_prioridad}</strong>
+                      </div>
+                      <div style={{ background: '#edf2f7', padding: 'var(--space-xs)', borderRadius: '4px' }}>
+                        <small style={{ display: 'block', color: '#4a5568' }}>Menores</small>
+                        <strong style={{ fontSize: '1.2rem' }}>{fichaData.puntaje_menores ?? '-'}</strong>
+                      </div>
+                      <div style={{ background: '#edf2f7', padding: 'var(--space-xs)', borderRadius: '4px' }}>
+                        <small style={{ display: 'block', color: '#4a5568' }}>Alimentación</small>
+                        <strong style={{ fontSize: '1.2rem' }}>{fichaData.puntaje_alimentacion ?? '-'}</strong>
+                      </div>
+                      <div style={{ background: '#edf2f7', padding: 'var(--space-xs)', borderRadius: '4px' }}>
+                        <small style={{ display: 'block', color: '#4a5568' }}>Asistencia</small>
+                        <strong style={{ fontSize: '1.2rem' }}>{fichaData.puntaje_asistencia ?? '-'}</strong>
+                      </div>
+                      <div style={{ background: '#edf2f7', padding: 'var(--space-xs)', borderRadius: '4px' }}>
+                        <small style={{ display: 'block', color: '#4a5568' }}>Participación</small>
+                        <strong style={{ fontSize: '1.2rem' }}>{fichaData.puntaje_participacion ?? '-'}</strong>
+                      </div>
+                      <div style={{ background: '#edf2f7', padding: 'var(--space-xs)', borderRadius: '4px' }}>
+                        <small style={{ display: 'block', color: '#4a5568' }}>Prioridad Social</small>
+                        <span className={`badge ${getBadgeClass(fichaData.prioridad_social)}`} style={{ display: 'inline-block', marginTop: '4px' }}>
+                          {getPrioridadLabel(fichaData.prioridad_social)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Auditoría del Servidor */}
+                  <div style={{ fontSize: '0.8rem', color: '#718096', borderTop: '1px solid #e2e8f0', paddingTop: 'var(--space-xs)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-xs)' }}>
+                    <div><strong>Registrado por:</strong> {fichaData.registrado_por?.nombre} {fichaData.registrado_por?.apellido}</div>
+                    <div><strong>Evaluado por:</strong> {fichaData.evaluado_por ? `${fichaData.evaluado_por.nombre} ${fichaData.evaluado_por.apellido}` : 'Pendiente'}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Acciones de gestión integradas directo en la ficha */}
+            <div className="modal-footer" style={{ gap: 'var(--space-sm)' }}>
+              <button
+                type="button"
+                className="btn-primary"
+                style={{ backgroundColor: '#4a5568', padding: '0 1rem', minHeight: '40px' }}
+                onClick={() => setShowIntegranteModal(true)}
+                disabled={loadingFicha}
+              >
+                👥 Añadir Integrante
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                style={{ padding: '0 1rem', minHeight: '40px' }}
+                onClick={handleAbrirReferente}
+                disabled={loadingFicha}
+              >
+                👑 Cambiar Referente
+              </button>
+              <button
+                type="button"
+                className="btn-table-action action-secondary"
+                style={{ minHeight: '40px', marginLeft: 'auto' }}
+                onClick={() => { setShowFichaModal(false); setFamiliaCreadaId(null); }}
+              >
+                Cerrar Ficha
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================================================
+          MODAL: NUEVA FAMILIA
           ========================================================================== */}
       {showNuevoModal && (
         <div className="modal-overlay" onClick={handleCerrarModalCreacion}>
@@ -443,7 +590,6 @@ function Familias({ onNavegar }) {
             </div>
 
             {!showPostCreacion ? (
-              /* ETAPA 1: EL FORMULARIO DE RELLENO */
               <form onSubmit={handleCrearFamilia} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1, minHeight: 0 }}>
                 <div className="modal-body">
                   {saveError && <div className="login-error" style={{ marginBottom: 'var(--space-md)' }}>{saveError}</div>}
@@ -564,7 +710,6 @@ function Familias({ onNavegar }) {
                 </div>
               </form>
             ) : (
-              /* ETAPA 2: ACCIONES COMPLEMENTARIAS AL TENER ÉXITO */
               <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
                 <div className="modal-body">
                   <div className="login-success" style={{ marginBottom: 'var(--space-md)' }}>
@@ -606,7 +751,7 @@ function Familias({ onNavegar }) {
       )}
 
       {/* ==========================================================================
-          SUBMODAL: AÑADIR INTEGRANTE A LA FAMILIA (NUEVO)
+          SUBMODAL: AÑADIR INTEGRANTE A LA FAMILIA
           ========================================================================== */}
       {showIntegranteModal && (
         <div className="modal-overlay" onClick={() => setShowIntegranteModal(false)}>

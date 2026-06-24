@@ -183,3 +183,21 @@ export async function createIntegranteRequest(payload) {
     body: JSON.stringify(payload),
   });
 }
+
+
+/**
+ * Obtiene el detalle extendido de una familia por su ID.
+ * @param {number|string} familiaId
+ * @returns {Promise<Object>}
+ */
+export async function getFichaFamiliaRequest(familiaId) {
+  const token = localStorage.getItem('access_token');
+
+  return apiRequest(`/api/familias/${parseInt(familiaId, 10)}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+    },
+  });
+}
