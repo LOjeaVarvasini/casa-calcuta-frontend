@@ -1,322 +1,457 @@
-import { useState } from 'react';
-import './asistencia.css';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  getFamiliasPrincipalesRequest,
+  createRegistroAsistenciaRequest,
+  getHistorialAsistenciaRequest,
+} from '../../config/api.js';
 
-const Asistencia = ({ onNavigate, parametros }) => {
-  // Estado para dropdown móvil "Más"
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+// Helper para obtener la fecha de hoy en GMT-3 (Argentina)
+function obtenerFechaHoyGMT3() {
+  const ahora = new Date();
+  const offsetGMT3 = -3 * 60;
+  const fechaLocal = new Date(ahora.getTime() + (ahora.getTimezoneOffset() + offsetGMT3) * 60000);
+  return fechaLocal.toISOString().split('T')[0];
+}
 
-  // Estados para los toggles de control de entrega de cada familia
-  const [familia1Estado, setFamilia1Estado] = useState('retirado');
-  const [familia2Estado, setFamilia2Estado] = useState('falta');
+// Helper para formatear fecha ISO (YYYY-MM-DD) a DD / MM / YYYY legible
+function formatearFechaLegible(fechaISO) {
+  if (!fechaISO) return '[Fecha]';
+  const partes = fechaISO.split('-');
+  return `${partes[2]} / ${partes[1]} / ${partes[0]}`;
+}
 
-  // Estado para modal de confirmación de guardado
+function Asistencia({ onNavegar, parametros }) {
+  const [fechaSeleccionada, setFechaSeleccionada] = useState(obtenerFechaHoyGMT3());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // 🔍 ESTADO DEL BUSCADOR
+  const [busqueda, setBusqueda] = useState('');
+
+  // Estados de datos sincronizados
+  const [familias, setFamilias] = useState([]);
+  const [historialAsistencia, setHistorialAsistencia] = useState({});
+  const [estadosFamilias, setEstadosFamilias] = useState({});
+
+  // Estado de guardado masivo
+  const [guardando, setGuardando] = useState(false);
+  const [errorGuardado, setErrorGuardado] = useState(null);
+
+  // Estados de Modales Rediseñados
   const [modalGuardadoAbierto, setModalGuardadoAbierto] = useState(false);
+  const [resultadoGuardado, setResultadoGuardado] = useState({ total: 0, ausentes: 0 });
+  const [familiasCriticasReportadas, setFamiliasCriticasReportadas] = useState([]);
 
-  // Estado para modal de alerta de ausentismo crítico
-  const [modalAusentismoAbierto, setModalAusentismoAbierto] = useState(false);
+  // Cargar historial operativo filtrando por la ventana móvil de los 30 días previos
+  const cargarHistorial = useCallback(async () => {
+    try {
+      const respuesta = await getHistorialAsistenciaRequest('per_page=100');
+      const registros = respuesta.data || [];
 
-  const toggleDropdown = () => {
-    setDropdownOpen(prev => !prev);
+      const fechaBase = new Date(fechaSeleccionada + 'T12:00:00');
+      const limiteInferior = new Date(fechaBase.getTime());
+      limiteInferior.setDate(limiteInferior.getDate() - 30);
+
+      const historialIndexado = {};
+
+      registros.forEach((registro) => {
+        const limpiaISO = registro.fecha.split('T')[0];
+        const fechaRegistro = new Date(limpiaISO + 'T12:00:00');
+
+        if (fechaRegistro >= limiteInferior && fechaRegistro < fechaBase) {
+          const fid = registro.familia_id;
+          if (!historialIndexado[fid]) {
+            historialIndexado[fid] = [];
+          }
+          historialIndexado[fid].push(registro);
+        }
+      });
+
+      Object.keys(historialIndexado).forEach((fid) => {
+        historialIndexado[fid].sort((a, b) => new Date(a.fecha.split('T')[0] + 'T12:00:00') - new Date(b.fecha.split('T')[0] + 'T12:00:00'));
+      });
+
+      setHistorialAsistencia(historialIndexado);
+      return registros;
+    } catch (err) {
+      console.warn('Historial no disponible:', err);
+      setHistorialAsistencia({});
+      return [];
+    }
+  }, [fechaSeleccionada]);
+
+  const cargarFamilias = useCallback(async () => {
+    try {
+      const respuesta = await getFamiliasPrincipalesRequest('per_page=100');
+      let listaCompleta = respuesta.data || [];
+
+      let filtradas = listaCompleta.filter(
+        (f) => (f.estado_lista || '').toUpperCase() === 'PRINCIPAL' && f.activa === true
+      );
+
+      if (parametros?.familiaId) {
+        filtradas = filtradas.filter((f) => f.id_familia === parseInt(parametros.familiaId, 10));
+      }
+
+      setFamilias(filtradas);
+      return filtradas;
+    } catch (err) {
+      throw new Error(err.message || 'Error al descargar el padrón de familias.');
+    }
+  }, [parametros]);
+
+  // Sincronización inicial
+  useEffect(() => {
+    const sincronizarDatosPlanilla = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [listaF, todosLosRegistros] = await Promise.all([cargarFamilias(), cargarHistorial()]);
+        
+        const estadosIniciales = {};
+        listaF.forEach((familia) => {
+          const yaExisteFaltaEsteDia = todosLosRegistros.some(
+            (r) => r.familia_id === familia.id_familia && r.fecha.split('T')[0] === fechaSeleccionada && (r.estado === 'ausente' || r.estado === 'falta')
+          );
+          estadosIniciales[familia.id_familia] = yaExisteFaltaEsteDia ? 'falta' : 'retirado';
+        });
+        setEstadosFamilias(estadosIniciales);
+
+      } catch (err) {
+        setError(err.message || 'No se pudo sincronizar el estado del backend.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    sincronizarDatosPlanilla();
+  }, [fechaSeleccionada, cargarFamilias, cargarHistorial]);
+
+  // Filtrado reactivo en caliente de familias mediante input buscador
+  const familiasFiltradas = useMemo(() => {
+    const query = busqueda.toLowerCase().trim();
+    if (!query) return familias;
+
+    return familias.filter((f) => {
+      const apellido = (f.referente?.apellido || '').toLowerCase();
+      const nombre = (f.referente?.nombre || '').toLowerCase();
+      return apellido.includes(query) || nombre.includes(query);
+    });
+  }, [familias, busqueda]);
+
+  const calcularTriadaHistorial = useCallback((familiaId) => {
+    const registros = historialAsistencia[familiaId] || [];
+    const mapeoEstados = registros.map((r) => {
+      const est = (r.estado || '').toLowerCase().trim();
+      return !(est === 'ausente' || est === 'falta' || est === 'no retiró');
+    });
+
+    const ultimosTresEventos = mapeoEstados.slice(-3);
+    const casillerosFaltantes = Math.max(0, 3 - ultimosTresEventos.length);
+    const rellenoVerde = Array(casillerosFaltantes).fill(true);
+
+    return [...rellenoVerde, ...ultimosTresEventos];
+  }, [historialAsistencia]);
+
+  // Algoritmo con validación de brecha temporal de 7 días (Anti-Falsos Positivos)
+  const contarFaltasConsecutivas = (familiaId) => {
+    const registros = historialAsistencia[familiaId] || [];
+    if (registros.length === 0) return 0;
+
+    let faltasConsecutivas = 0;
+    
+    // Forzamos la hora al mediodía para que la resta de milisegundos sea exacta
+    let fechaReferencia = new Date(fechaSeleccionada + 'T12:00:00');
+
+    // Recorremos las inasistencias del backend de atrás para adelante (de la más nueva a la más vieja)
+    for (let i = registros.length - 1; i >= 0; i--) {
+      const registroActual = registros[i];
+      const fechaRegistro = new Date(registroActual.fecha.split('T')[0] + 'T12:00:00');
+
+      // Calculamos la distancia en días entre la jornada que estamos evaluando y el registro de la falta
+      const diferenciaMilisegundos = fechaReferencia.getTime() - fechaRegistro.getTime();
+      const distanciaDias = Math.round(diferenciaMilisegundos / (1000 * 60 * 60 * 24));
+
+      // 🚨 LA REGLA DE ORO DE LOS 7 DÍAS:
+      // Si es la primera falta que evaluamos (distancia 0 porque coincide con el switch) o si la falta 
+      // anterior pasó exactamente hace 7 días (una semana atrás), la racha sigue firme.
+      if (distanciaDias === 0 || distanciaDias === 7) {
+        faltasConsecutivas++;
+        // Movemos nuestro puntero de referencia a la fecha de esta falta para evaluar la siguiente
+        fechaReferencia = fechaRegistro;
+      } else if (distanciaDias > 7) {
+        // 🛑 ¡ALERTA! Si pasaron 14 días o más entre registros, significa que en el medio hubo un sábado 
+        // libre donde la familia SÍ retiró su porción. La consecutividad se rompió por completo acá.
+        break;
+      }
+    }
+
+    return faltasConsecutivas;
   };
 
-  const handleFamilia1Change = (estado) => {
-    setFamilia1Estado(estado);
-  };
+  const faltasConsecutivasMap = useMemo(() => {
+    const mapa = {};
+    familias.forEach((familia) => {
+      mapa[familia.id_familia] = contarFaltasConsecutivas(familia.id_familia);
+    });
+    return mapa;
+  }, [familias, historialAsistencia]);
 
-  const handleFamilia2Change = (estado) => {
-    setFamilia2Estado(estado);
-    if (estado === 'falta') {
-      setModalAusentismoAbierto(true);
+  const handleGuardar = async () => {
+    setGuardando(true);
+    setErrorGuardado(null);
+
+    const familiasAusentes = familias.filter((f) => estadosFamilias[f.id_familia] === 'falta');
+
+    // 🚨 PROCESAMIENTO PREVENTIVO: Consolidamos la lista de familias que llegan a la 3° falta consecutiva HOY
+    const detectadasCriticas = [];
+    familiasAusentes.forEach((f) => {
+      const faltasPrevias = faltasConsecutivasMap[f.id_familia] || 0;
+      if (faltasPrevias >= 2) {
+        detectadasCriticas.push({
+          id: f.id_familia,
+          apellido: f.referente?.apellido || 'Designada',
+          referente: `${f.referente?.nombre || ''} ${f.referente?.apellido || ''}`,
+          totalFaltas: faltasPrevias + 1
+        });
+      }
+    });
+
+    if (familiasAusentes.length === 0) {
+      setResultadoGuardado({ total: familias.length, ausentes: 0 });
+      setFamiliasCriticasReportadas([]);
+      setModalGuardadoAbierto(true);
+      setGuardando(false);
+      return;
+    }
+
+    try {
+      const promesas = familiasAusentes.map((familia) =>
+        createRegistroAsistenciaRequest({
+          familia_id: parseInt(familia.id_familia, 10),
+          id_familia: parseInt(familia.id_familia, 10),
+          fecha: fechaSeleccionada,
+          estado: 'ausente',
+        })
+      );
+
+      await Promise.all(promesas);
+
+      setResultadoGuardado({ total: familias.length, ausentes: familiasAusentes.length });
+      setFamiliasCriticasReportadas(detectadasCriticas); // Seteamos las alertas consolidadas
+      setModalGuardadoAbierto(true);
+
+      await Promise.all([cargarFamilias(), cargarHistorial()]);
+    } catch (err) {
+      setErrorGuardado(err.message || 'Error al impactar los registros en el servidor de producción.');
+    } finally {
+      setGuardando(false);
     }
   };
 
-  const handleGuardar = () => {
-    setModalGuardadoAbierto(true);
-  };
-
-  const cerrarModalGuardado = () => {
-    setModalGuardadoAbierto(false);
-  };
-
-  const cerrarModalAusentismo = () => {
-    setModalAusentismoAbierto(false);
-  };
+  const totalRacionesProvisionales = familias.length * 3;
 
   return (
-    <div className="app-container">
-      {/* BARRA LATERAL DESKTOP (Heredada de base.css) */}
-      <aside className="app-sidebar">
-        <div className="sidebar-header">
-          <div className="brand-badge">CC</div>
-          <span className="sidebar-brand">Casa Calcuta</span>
-        </div>
-        <nav>
-          <ul className="sidebar-nav">
-            <li className="nav-item">
-              <a href="#" onClick={(e) => { e.preventDefault(); onNavigate('dashboard'); }}>
-                <span>📊</span> Panel Principal
-              </a>
-            </li>
-            <li className="nav-item">
-              <a href="#" onClick={(e) => { e.preventDefault(); onNavigate('familias'); }}>
-                <span>👥</span> Gestión de Familias
-              </a>
-            </li>
-            <li className="nav-item active">
-              <a href="#" onClick={(e) => { e.preventDefault(); onNavigate('asistencia'); }}>
-                <span>📋</span> Registrar Asistencia
-              </a>
-            </li>
-            <li className="nav-item">
-              <a href="#" onClick={(e) => { e.preventDefault(); onNavigate('listas'); }}>
-                <span>⏳</span> Listas de Espera
-              </a>
-            </li>
-            <li className="nav-item">
-              <a href="#" onClick={(e) => { e.preventDefault(); onNavigate('donaciones'); }}>
-                <span>📦</span> Donaciones
-              </a>
-            </li>
-            <li className="nav-item">
-              <a href="#" onClick={(e) => { e.preventDefault(); onNavigate('usuarios'); }}>
-                <span>⚙️</span> Administración
-              </a>
-            </li>
-          </ul>
-        </nav>
-      </aside>
-
-      {/* ÁREA DE TRABAJO PRINCIPAL */}
-      <div className="app-content-area">
-        <header className="app-header">
-          <div className="header-title">
-            <h1>Registro de Asistencia y Entrega</h1>
-          </div>
-          <div className="user-profile">
-            <div className="user-info">
-              <p className="user-name">[Nombre del Usuario]</p>
-              <p className="user-role">[Rol del Usuario]</p>
-            </div>
-            <div className="brand-badge" style={{ width: 40, height: 40, borderRadius: '50%' }}>[Iniciales]</div>
-          </div>
-        </header>
-
-        <main className="main-content">
-          {/* Mensaje informativo si se recibe parámetro de familia específica */}
-          {parametros?.familiaId && (
-            <div className="info-profile-box">
-              <span style={{ fontSize: 'var(--text-sm)', color: '#718096' }}>
-                📋 Filtrando asistencia para: <strong>[Familia ID: {parametros.familiaId}]</strong>
-              </span>
-            </div>
-          )}
-
-          {/* PANEL DE METADATOS DE LA JORNADA */}
-          <section className="attendance-summary-bar">
-            <div className="summary-item">
-              <span className="summary-label">Fecha de Entrega</span>
-              <span className="summary-value">[Fecha de Jornada]</span>
-            </div>
-            <div className="summary-item highlight-item">
-              <span className="summary-label">Porciones Totales a Realizar</span>
-              <span className="summary-value">[Cantidad Total] Raciones</span>
-            </div>
-            <button className="btn-primary" onClick={handleGuardar}>💾 Guardar Planilla</button>
-          </section>
-
-          {/* PLANILLA DE CONTROL OPERATIVO ANTI-SCROLL */}
-          <section className="table-responsive-container">
-            <table className="custom-table custom-table-responsive">
-              <thead>
-                <tr>
-                  <th>Familia / Referente</th>
-                  <th>Raciones Asignadas</th>
-                  <th>Historial Reciente</th>
-                  <th style={{ textAlign: 'center' }}>Control de Entrega</th>
-                </tr>
-              </thead>
-              <tbody>
-                {/* Fila Familia 1 */}
-                <tr>
-                  <td data-label="Familia">
-                    <strong className="attendance-family-name">[Apellido Familia 1]</strong>
-                    <p className="attendance-ref-name">Ref: [Nombre Referente 1]</p>
-                  </td>
-                  <td data-label="Raciones">
-                    <span className="portions-badge">[N] Porciones</span>
-                  </td>
-                  <td data-label="Historial">
-                    <div className="history-dots">
-                      <span className="dot dot-ok" title="Retiró"></span>
-                      <span className="dot dot-ok" title="Retiró"></span>
-                      <span className="dot dot-ok" title="Retiró"></span>
-                    </div>
-                  </td>
-                  <td data-label="Control" style={{ textAlign: 'center' }}>
-                    <div className="switch-toggle-group">
-                      <div className="switch-toggle-item">
-                        <input
-                          type="radio"
-                          id="f1-retirado"
-                          name="familia-1"
-                          checked={familia1Estado === 'retirado'}
-                          onChange={() => handleFamilia1Change('retirado')}
-                        />
-                        <label htmlFor="f1-retirado">Retirado</label>
-                      </div>
-                      <div className="switch-toggle-item">
-                        <input
-                          type="radio"
-                          id="f1-falta"
-                          name="familia-1"
-                          checked={familia1Estado === 'falta'}
-                          onChange={() => handleFamilia1Change('falta')}
-                        />
-                        <label htmlFor="f1-falta">No Retiró</label>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-
-                {/* Fila Familia 2 (En riesgo de ausentismo crítico) */}
-                <tr>
-                  <td data-label="Familia">
-                    <strong className="attendance-family-name">[Apellido Familia 2]</strong>
-                    <p className="attendance-ref-name">Ref: [Nombre Referente 2]</p>
-                  </td>
-                  <td data-label="Raciones">
-                    <span className="portions-badge">[N] Porciones</span>
-                  </td>
-                  <td data-label="Historial">
-                    <div className="history-dots">
-                      <span className="dot dot-ok" title="Retiró"></span>
-                      <span className="dot dot-danger" title="No retiró"></span>
-                      <span className="dot dot-danger" title="No retiró"></span>
-                    </div>
-                  </td>
-                  <td data-label="Control" style={{ textAlign: 'center' }}>
-                    <div className="switch-toggle-group">
-                      <div className="switch-toggle-item">
-                        <input
-                          type="radio"
-                          id="f2-retirado"
-                          name="familia-2"
-                          checked={familia2Estado === 'retirado'}
-                          onChange={() => handleFamilia2Change('retirado')}
-                        />
-                        <label htmlFor="f2-retirado">Retirado</label>
-                      </div>
-                      <div className="switch-toggle-item">
-                        <input
-                          type="radio"
-                          id="f2-falta"
-                          name="familia-2"
-                          checked={familia2Estado === 'falta'}
-                          onChange={() => handleFamilia2Change('falta')}
-                        />
-                        <label htmlFor="f2-falta" className={familia2Estado === 'falta' ? 'pulse-warning' : ''}>
-                          No Retiró
-                        </label>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </section>
-        </main>
-      </div>
-
-      {/* NAVEGACIÓN INFERIOR MOBILE */}
-      <nav className="mobile-nav">
-        <a
-          href="#"
-          className="mobile-nav-item"
-          onClick={(e) => { e.preventDefault(); onNavigate('dashboard'); }}
-        >
-          <span className="mobile-nav-icon">📊</span>Panel
-        </a>
-        <a
-          href="#"
-          className="mobile-nav-item"
-          onClick={(e) => { e.preventDefault(); onNavigate('familias'); }}
-        >
-          <span className="mobile-nav-icon">👥</span>Familias
-        </a>
-        <a
-          href="#"
-          className="mobile-nav-item active"
-          onClick={(e) => { e.preventDefault(); onNavigate('asistencia'); }}
-        >
-          <span className="mobile-nav-icon">📋</span>Asistencia
-        </a>
-        <div className="mobile-nav-dropdown-container">
-          <button
-            className={`mobile-nav-item btn-dropdown-trigger ${dropdownOpen ? 'open' : ''}`}
-            onClick={toggleDropdown}
-          >
-            <span className="mobile-nav-icon">➕</span>Más
-          </button>
-          <div className="mobile-nav-popup" style={{ display: dropdownOpen ? 'flex' : 'none' }}>
-            <a href="#" onClick={(e) => { e.preventDefault(); onNavigate('listas'); }}>
-              <span>⏳</span> Listas de Espera
-            </a>
-            <a href="#" onClick={(e) => { e.preventDefault(); onNavigate('donaciones'); }}>
-              <span>📦</span> Donaciones
-            </a>
-            <a href="#" onClick={(e) => { e.preventDefault(); onNavigate('usuarios'); }}>
-              <span>⚙️</span> Administración
-            </a>
-          </div>
-        </div>
-      </nav>
-
-      {/* MODAL: CONFIRMACIÓN DE GUARDADO EXITOSO */}
-      {modalGuardadoAbierto && (
-        <div className="modal-overlay" onClick={cerrarModalGuardado}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>✅ Planilla Guardada</h3>
-            </div>
-            <div className="modal-body">
-              <p>La planilla de asistencia del día <strong>[Fecha de Jornada]</strong> ha sido registrada exitosamente.</p>
-              <p style={{ marginTop: '0.5rem', color: '#718096' }}>
-                <strong>[Cantidad Total]</strong> raciones planificadas para <strong>[Cantidad de Familias]</strong> familias.
-              </p>
-            </div>
-            <div className="modal-footer">
-              <button className="btn-primary" onClick={cerrarModalGuardado}>Aceptar</button>
-            </div>
-          </div>
+    <div className="attendance-view" style={{ width: '100%' }}>
+      {parametros?.familiaId && (
+        <div className="info-profile-box" style={{ marginBottom: 'var(--space-md)' }}>
+          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-primary)', fontWeight: 600 }}>
+            📋 Modo Inspección: Filtrando planilla para la Familia ID #{parametros.familiaId}
+          </span>
         </div>
       )}
 
-      {/* MODAL: ALERTA DE AUSENTISMO CRÍTICO */}
-      {modalAusentismoAbierto && (
-        <div className="modal-overlay" onClick={cerrarModalAusentismo}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header alert-danger">
-              <h3>⚠️ Ausentismo Crítico Detectado</h3>
+      {error && <div className="login-error" style={{ marginBottom: 'var(--space-md)' }}>{error}</div>}
+      {errorGuardado && <div className="login-error" style={{ marginBottom: 'var(--space-md)' }}>{errorGuardado}</div>}
+
+      {/* PANEL DE METADATOS Y CONTROL DE FECHA */}
+      <section className="info-profile-box" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', wrap: 'wrap', gap: 'var(--space-sm)' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-lg)', alignItems: 'center' }}>
+          <div>
+            <label htmlFor="input-fecha-jornada" style={{ display: 'block', fontSize: 'var(--text-sm)', color: '#718096', fontWeight: 700, marginBottom: '4px' }}>
+              Fecha de Entrega
+            </label>
+            <input 
+              id="input-fecha-jornada"
+              type="date" 
+              value={fechaSeleccionada}
+              onChange={(e) => setFechaSeleccionada(e.target.value)}
+              className="form-control"
+              style={{ height: '38px', maxWidth: '180px', fontWeight: 600, padding: '0 var(--space-xs)', cursor: 'pointer' }}
+            />
+          </div>
+          <div style={{ borderLeft: '1px solid var(--color-border)', paddingLeft: 'var(--space-md)' }}>
+            <span style={{ display: 'block', fontSize: 'var(--text-sm)', color: '#718096', fontWeight: 600, marginBottom: '4px' }}>Porciones Tot</span>
+            <strong style={{ fontSize: 'var(--text-md)', color: 'var(--color-primary)', display: 'block', height: '38px', paddingTop: '6px' }}>
+              {totalRacionesProvisionales} Raciones
+            </strong>
+          </div>
+        </div>
+        <button
+          className="btn-primary"
+          onClick={handleGuardar}
+          disabled={guardando || loading}
+          style={{ minHeight: '40px', marginTop: 'auto' }}
+        >
+          {guardando ? '⏳ Guardando...' : '💾 Guardar Planilla'}
+        </button>
+      </section>
+
+      {/* 🔍 BARRA DE BÚSQUEDA OPERATIVA EN CALIENTE */}
+      <section className="page-toolbar" style={{ marginTop: 'var(--space-md)', padding: 'var(--space-sm)' }}>
+        <div className="search-filter-group" style={{ maxWidth: '100%' }}>
+          <input 
+            type="text" 
+            placeholder="🔍 Buscar familia por apellido o referente..."
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            className="form-control"
+            style={{ height: '40px', fontSize: 'var(--text-sm)' }}
+          />
+        </div>
+      </section>
+
+      {loading && (
+        <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--color-primary)', fontWeight: 600 }}>
+          Sincronizando registros para el día {formatearFechaLegible(fechaSeleccionada)}...
+        </div>
+      )}
+
+      {/* PLANILLA DE CONTROL OPERATIVO */}
+      {!loading && !error && (
+        <section className="table-responsive-container" style={{ marginTop: 'var(--space-sm)' }}>
+          <table className="custom-table custom-table-responsive">
+            <thead>
+              <tr>
+                <th>Familia / Referente</th>
+                <th>Raciones Asignadas</th>
+                <th>Historial Reciente</th>
+                <th style={{ textAlign: 'center' }}>Control de Entrega</th>
+              </tr>
+            </thead>
+            <tbody>
+              {familiasFiltradas.length === 0 && (
+                <tr>
+                  <td colSpan="4" style={{ textAlign: 'center', padding: 'var(--space-lg)', color: '#718096' }}>
+                    No se encontraron familias que coincidan con la búsqueda.
+                  </td>
+                </tr>
+              )}
+              {familiasFiltradas.map((family) => {
+                const ref = family.referente || {};
+                const triada = calcularTriadaHistorial(family.id_familia);
+                const faltasConsecutivas = faltasConsecutivasMap[family.id_familia] || 0;
+                const estaAusente = estadosFamilias[family.id_familia] === 'falta';
+
+                return (
+                  <tr key={family.id_familia}>
+                    <td data-label="Familia">
+                      <strong style={{ color: 'var(--color-text)', fontSize: 'var(--text-sm)' }}>
+                        {ref.apellido || `Familia #${family.id_familia}`}
+                      </strong>
+                      <p style={{ margin: 0, fontSize: '0.75rem', color: '#718096' }}>
+                        Ref: {ref.nombre || '[Sin Nombre]'} {ref.apellido || ''}
+                      </p>
+                    </td>
+                    <td data-label="Raciones">
+                      <span className="badge badge-primary" style={{ textTransform: 'none' }}>
+                        3 Porciones
+                      </span>
+                    </td>
+                    <td data-label="Historial">
+                      <div className="history-dots" style={{ display: 'flex', gap: '6px', alignItems: 'center', justifyContent: 'flex-start', minHeight: '12px' }}>
+                        {triada.map((asistio, idx) => (
+                          <span
+                            key={`dot-${family.id_familia}-${idx}`}
+                            title={asistio ? 'Retiró' : 'No retiró'}
+                            style={{
+                              width: '10px',
+                              height: '10px',
+                              borderRadius: '50%',
+                              display: 'inline-block',
+                              backgroundColor: asistio ? '#22c55e' : '#ef4444'
+                            }}
+                          ></span>
+                        ))}
+                      </div>
+                    </td>
+                    <td data-label="Control" style={{ textAlign: 'center' }}>
+                      <div className="switch-toggle-group">
+                        <div className="switch-toggle-item">
+                          <input
+                            type="radio"
+                            id={`f${family.id_familia}-retirado`}
+                            name={`family-${family.id_familia}`}
+                            checked={estadosFamilias[family.id_familia] === 'retirado'}
+                            onChange={() => setEstadosFamilias(prev => ({ ...prev, [family.id_familia]: 'retirado' }))}
+                          />
+                          <label htmlFor={`f${family.id_familia}-retirado`}>Retirado</label>
+                        </div>
+                        <div className="switch-toggle-item">
+                          <input
+                            type="radio"
+                            id={`f${family.id_familia}-falta`}
+                            name={`family-${family.id_familia}`}
+                            checked={estadosFamilias[family.id_familia] === 'falta'}
+                            onChange={() => setEstadosFamilias(prev => ({ ...prev, [family.id_familia]: 'falta' }))}
+                          />
+                          <label
+                            htmlFor={`f${family.id_familia}-falta`}
+                            className={estaAusente && faltasConsecutivas >= 2 ? 'pulse-warning' : ''}
+                            style={{ color: estaAusente && faltasConsecutivas >= 2 ? 'var(--color-danger)' : '#718096' }}
+                          >
+                            No Retiró
+                          </label>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </section>
+      )}
+
+      {/* 🍏 MODAL UNIFICADO: CONFIRMACIÓN DE GUARDADO CON REPORTE DE EXCLUSIONES */}
+      {modalGuardadoAbierto && (
+        <div className="modal-overlay" onClick={() => setModalGuardadoAbierto(false)}>
+          <div className="modal-box" style={{ maxWidth: '520px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>✅ Planilla Procesada</h3>
             </div>
             <div className="modal-body">
-              <p>La familia <strong>[Apellido Familia 2]</strong> ha acumulado <strong>[Cantidad] faltas consecutivas</strong> en las últimas entregas.</p>
-              <p style={{ marginTop: '0.75rem', fontSize: 'var(--text-sm)', color: '#718096' }}>
-                Se recomienda contactar al referente <strong>[Nombre Referente 2]</strong> para coordinar una visita de seguimiento.
+              <p>La planilla del día <strong>{formatearFechaLegible(fechaSeleccionada)}</strong> ha sido impactada en el servidor cloud.</p>
+              <p style={{ marginTop: '0.5rem', color: '#718096', fontSize: 'var(--text-sm)' }}>
+                Total: <strong>{resultadoGuardado.total}</strong> familias procesadas. Inasistencias de hoy: <strong>{resultadoGuardado.ausentes}</strong>.
               </p>
+
+              {/* 🚨 REPORTE DE ALERTAS CONSOLIDADO AL FINAL DEL DÍA */}
+              {familiasCriticasReportadas.length > 0 && (
+                <div style={{ marginTop: 'var(--space-md)', padding: 'var(--space-sm)', background: '#fff5f5', border: '1px solid #feb2b2', borderRadius: 'var(--radius-md)' }}>
+                  <h4 style={{ color: 'var(--color-danger)', fontSize: 'var(--text-sm)', fontWeight: 700, marginBottom: '6px' }}>
+                    ⚠️ REPORTE DE AUSENTISMO CRÍTICO (Racha de {fechaSeleccionada.split('-')[1]}/2026)
+                  </h4>
+                  <p style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '8px' }}>
+                    Las siguientes familias acumularon 3 o más faltas consecutivas hoy. Se sugiere derivar a auditoría social:
+                  </p>
+                  <ul style={{ paddingLeft: 'var(--space-md)', margin: 0, fontSize: 'var(--text-sm)' }}>
+                    {familiasCriticasReportadas.map((f) => (
+                      <li key={f.id} style={{ color: '#9b2c2c', marginBottom: '4px', fontWeight: 600 }}>
+                        ❌ Familia {f.apellido} <span style={{ fontWeight: 500, color: '#4a5568' }}>(Ref: {f.referente})</span> — {f.totalFaltas} Faltas Seguidas.
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
             <div className="modal-footer">
-              <button className="btn-table-action action-danger" onClick={cerrarModalAusentismo}>
-                Cerrar
-              </button>
-              <button className="btn-primary" onClick={cerrarModalAusentismo}>
-                Entendido
-              </button>
+              <button className="btn-primary" style={{ minHeight: '40px' }} onClick={() => setModalGuardadoAbierto(false)}>Entendido</button>
             </div>
           </div>
         </div>
       )}
     </div>
   );
-};
+}
 
 export default Asistencia;
