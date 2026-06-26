@@ -81,7 +81,46 @@ export async function logoutRequest(accessToken) {
   })
 }
 
-// ==========================================================================
+export async function getNotificacionesRequest(queryParams = 'per_page=15') {
+  const token = localStorage.getItem('access_token')
+  const path = queryParams ? `/api/notificaciones?${queryParams}` : '/api/notificaciones'
+
+  return apiRequest(path, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+}
+
+export async function getCumpleanosProximosRequest(queryParams = 'dias=14') {
+  const token = localStorage.getItem('access_token')
+  const path = queryParams ? `/api/cumpleanos/proximos?${queryParams}` : '/api/cumpleanos/proximos'
+
+  return apiRequest(path, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+}
+
+export async function marcarNotificacionVistaRequest(notificacionId) {
+  const token = localStorage.getItem('access_token')
+  const id = parseInt(notificacionId, 10)
+
+  return apiRequest(`/api/notificaciones/${id}/visto`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+}
+
+// ========================================================================== 
 // FUNCIONES DE FAMILIAS
 // ==========================================================================
 
