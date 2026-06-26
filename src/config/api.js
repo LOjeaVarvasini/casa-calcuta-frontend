@@ -81,7 +81,46 @@ export async function logoutRequest(accessToken) {
   })
 }
 
-// ==========================================================================
+export async function getNotificacionesRequest(queryParams = 'per_page=15') {
+  const token = localStorage.getItem('access_token')
+  const path = queryParams ? `/api/notificaciones?${queryParams}` : '/api/notificaciones'
+
+  return apiRequest(path, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+}
+
+export async function getCumpleanosProximosRequest(queryParams = 'dias=14') {
+  const token = localStorage.getItem('access_token')
+  const path = queryParams ? `/api/cumpleanos/proximos?${queryParams}` : '/api/cumpleanos/proximos'
+
+  return apiRequest(path, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+}
+
+export async function marcarNotificacionVistaRequest(notificacionId) {
+  const token = localStorage.getItem('access_token')
+  const id = parseInt(notificacionId, 10)
+
+  return apiRequest(`/api/notificaciones/${id}/visto`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+}
+
+// ========================================================================== 
 // FUNCIONES DE FAMILIAS
 // ==========================================================================
 
@@ -218,5 +257,66 @@ export async function deleteFamiliaRequest(familiaId) {
       'Authorization': `Bearer ${token}`,
       'Accept': 'application/json',
     },
+  });
+}
+
+
+// ==========================================================================
+// FUNCIONES DE ASISTENCIA (INTEGRACIÓN BACKEND)
+// ==========================================================================
+
+/**
+ * Obtiene el listado de familias activas para la planilla operativa.
+ * Filtra de forma obligatoria por per_page=100 para capturar el padrón entero.
+ * @returns {Promise<Object>} JSON con la propiedad data conteniendo el array de familias.
+ */
+export async function getFamiliasPrincipalesRequest(queryParams = 'per_page=100') {
+  const token = localStorage.getItem('access_token');
+  const path = queryParams ? `/api/familias?${queryParams}` : '/api/familias';
+
+  return apiRequest(path, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+}
+
+/**
+ * Obtiene el historial global de registros de asistencia.
+ * @param {string} [queryParams] Query string opcional (ej: "per_page=100")
+ * @returns {Promise<Object>} Colección paginada de registros de asistencia.
+ */
+export async function getHistorialAsistenciaRequest(queryParams = 'per_page=100') {
+  const token = localStorage.getItem('access_token');
+  const path = queryParams ? `/api/registros-asistencia?${queryParams}` : '/api/registros-asistencia';
+
+  return apiRequest(path, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+}
+
+/**
+ * Registra una inasistencia/ausencia de una familia en la jornada.
+ * Aplica blindaje mutativo anti-CORS de Laravel Cloud y doble payload en IDs.
+ * @param {Object} payload Estructura con familia_id, fecha y estado.
+ */
+export async function createRegistroAsistenciaRequest(payload) {
+  const token = localStorage.getItem('access_token');
+
+  return apiRequest('/api/registros-asistencia', {
+    method: 'POST',
+    redirect: 'manual', // 🛡️ Evita bloqueos falsos de CORS por desvíos 302 internos
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
   });
 }
