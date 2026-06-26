@@ -15,6 +15,31 @@
   margin-bottom: var(--space-lg);
 }
 
+.critical-alerts-column {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  position: relative;
+}
+
+.critical-alerts-badge {
+  position: absolute;
+  top: -0.65rem;
+  left: 0.75rem;
+  transform: none;
+  z-index: 3;
+  min-width: 1.75rem;
+  pointer-events: none;
+}
+
+.critical-alert-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding-top: 0;
+}
+
 .alert-card {
   width: 100%;
   background-color: var(--color-card);
@@ -25,6 +50,14 @@
   gap: var(--space-md);
   box-shadow: var(--shadow-sm);
   border-left: 5px solid var(--color-border);
+}
+
+.alert-notification-card {
+  align-items: center;
+}
+
+.alert-placeholder {
+  opacity: 0.9;
 }
 
 .alert-danger {
@@ -48,6 +81,46 @@
   align-items: flex-start;
 }
 
+.birthday-alert-body {
+  align-items: stretch;
+}
+
+.birthday-content {
+  width: 100%;
+}
+
+.birthday-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+}
+
+.birthday-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
+.birthday-item strong {
+  font-weight: 700;
+}
+
+.birthday-item span {
+  color: #4a5568;
+}
+
+.alert-card-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-left: auto;
+}
+
 /* Visibilidad de los textos en MÓVIL */
 .text-desktop {
   display: none; /* Ocultamos la descripción pesada en pantallas táctiles */
@@ -68,12 +141,39 @@
   display: none; 
 }
 
+.alert-view-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--color-danger);
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.alert-view-button:hover {
+  background: #fff5f5;
+  transform: translateY(-1px);
+}
+
 
 /* --- COMPORTAMIENTO PARA ESCRITORIO (Tablets en adelante) --- */
 @media (min-width: 768px) {
   .dashboard-alerts-section {
     flex-direction: row; /* Cambia a horizontal solo si hay espacio en pantalla */
     gap: var(--space-md);
+    align-items: flex-start;
+  }
+
+  .critical-alerts-column {
+    flex: 1;
   }
 
   .alert-card {
