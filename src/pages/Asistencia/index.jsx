@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   getFamiliasPrincipalesRequest,
   createRegistroAsistenciaRequest,
+  updateRegistroAsistenciaRequest,
   getHistorialAsistenciaRequest,
 } from '../../config/api.js';
 
@@ -20,6 +21,10 @@ function formatearFechaLegible(fechaISO) {
   return `${partes[2]} / ${partes[1]} / ${partes[0]}`;
 }
 
+function obtenerRegistroAsistenciaId(registro) {
+  return registro?.id ?? registro?.id_registro ?? registro?.registro_asistencia_id ?? registro?.id_registro_asistencia ?? null;
+}
+
 function Asistencia({ parametros }) {
   const [fechaSeleccionada, setFechaSeleccionada] = useState(obtenerFechaHoyGMT3());
   const [loading, setLoading] = useState(true);
@@ -30,6 +35,7 @@ function Asistencia({ parametros }) {
 
   // Estados de datos sincronizados
   const [familias, setFamilias] = useState([]);
+  const [registrosAsistencia, setRegistrosAsistencia] = useState([]);
   const [historialAsistencia, setHistorialAsistencia] = useState({});
   const [estadosFamilias, setEstadosFamilias] = useState({});
 
@@ -45,6 +51,7 @@ function Asistencia({ parametros }) {
     try {
       const respuesta = await getHistorialAsistenciaRequest('per_page=100');
       const registros = respuesta.data || [];
+      setRegistrosAsistencia(registros);
 
       const fechaBase = new Date(fechaSeleccionada + 'T12:00:00');
       const limiteInferior = new Date(fechaBase.getTime());
@@ -73,6 +80,7 @@ function Asistencia({ parametros }) {
       return registros;
     } catch (err) {
       console.warn('Historial no disponible:', err);
+      setRegistrosAsistencia([]);
       setHistorialAsistencia({});
       return [];
     }
@@ -219,12 +227,27 @@ function Asistencia({ parametros }) {
       const familiasAusentes = familias.filter((familia) => estadosFamilias[familia.id_familia] === 'falta');
 
       const promesas = familias.map((familia) =>
-        createRegistroAsistenciaRequest({
-          familia_id: parseInt(familia.id_familia, 10),
-          id_familia: parseInt(familia.id_familia, 10),
-          fecha: fechaSeleccionada,
-          estado: estadosFamilias[familia.id_familia] === 'falta' ? 'ausente' : 'presente',
-        })
+        {
+          const familiaId = parseInt(familia.id_familia, 10);
+          const payload = {
+            familia_id: familiaId,
+            id_familia: familiaId,
+            fecha: fechaSeleccionada,
+            estado: estadosFamilias[familia.id_familia] === 'falta' ? 'ausente' : 'presente',
+          };
+
+          const registroExistente = registrosAsistencia.find((registro) =>
+            parseInt(registro.familia_id, 10) === familiaId && (registro.fecha || '').split('T')[0] === fechaSeleccionada
+          );
+
+          const registroId = obtenerRegistroAsistenciaId(registroExistente);
+
+          if (registroId) {
+            return updateRegistroAsistenciaRequest(registroId, payload);
+          }
+
+          return createRegistroAsistenciaRequest(payload);
+        }
       );
 
       await Promise.all(promesas);
