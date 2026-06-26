@@ -320,3 +320,23 @@ export async function createRegistroAsistenciaRequest(payload) {
     body: JSON.stringify(payload),
   });
 }
+
+/**
+ * Actualiza un registro de asistencia existente.
+ * @param {number|string} registroId
+ * @param {Object} payload
+ */
+export async function updateRegistroAsistenciaRequest(registroId, payload) {
+  const token = localStorage.getItem('access_token');
+
+  return apiRequest(`/api/registros-asistencia/${parseInt(registroId, 10)}`, {
+    method: 'PUT',
+    redirect: 'manual',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+}
