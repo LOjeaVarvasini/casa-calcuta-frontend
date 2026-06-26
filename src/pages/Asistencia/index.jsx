@@ -20,7 +20,7 @@ function formatearFechaLegible(fechaISO) {
   return `${partes[2]} / ${partes[1]} / ${partes[0]}`;
 }
 
-function Asistencia({ onNavegar, parametros }) {
+function Asistencia({ parametros }) {
   const [fechaSeleccionada, setFechaSeleccionada] = useState(obtenerFechaHoyGMT3());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -40,8 +40,6 @@ function Asistencia({ onNavegar, parametros }) {
   // Estados de Modales Rediseñados
   const [modalGuardadoAbierto, setModalGuardadoAbierto] = useState(false);
   const [resultadoGuardado, setResultadoGuardado] = useState({ total: 0, ausentes: 0 });
-  const [familiasCriticasReportadas, setFamiliasCriticasReportadas] = useState([]);
-
   // Cargar historial operativo filtrando por la ventana móvil de los 30 días previos
   const cargarHistorial = useCallback(async () => {
     try {
@@ -153,7 +151,7 @@ function Asistencia({ onNavegar, parametros }) {
   }, [historialAsistencia]);
 
   // Algoritmo con validación de brecha temporal de 7 días (Anti-Falsos Positivos)
-  const contarFaltasConsecutivas = (familiaId) => {
+  const contarFaltasConsecutivas = useCallback((familiaId) => {
     const registros = historialAsistencia[familiaId] || [];
     if (registros.length === 0) return 0;
 
@@ -186,7 +184,7 @@ function Asistencia({ onNavegar, parametros }) {
     }
 
     return faltasConsecutivas;
-  };
+  }, [historialAsistencia, fechaSeleccionada]);
 
   const faltasConsecutivasMap = useMemo(() => {
     const mapa = {};
@@ -194,50 +192,34 @@ function Asistencia({ onNavegar, parametros }) {
       mapa[familia.id_familia] = contarFaltasConsecutivas(familia.id_familia);
     });
     return mapa;
-  }, [familias, historialAsistencia]);
+  }, [familias, contarFaltasConsecutivas]);
 
   const handleGuardar = async () => {
     setGuardando(true);
     setErrorGuardado(null);
 
-    const familiasAusentes = familias.filter((f) => estadosFamilias[f.id_familia] === 'falta');
-
-    // 🚨 PROCESAMIENTO PREVENTIVO: Consolidamos la lista de familias que llegan a la 3° falta consecutiva HOY
-    const detectadasCriticas = [];
-    familiasAusentes.forEach((f) => {
-      const faltasPrevias = faltasConsecutivasMap[f.id_familia] || 0;
-      if (faltasPrevias >= 2) {
-        detectadasCriticas.push({
-          id: f.id_familia,
-          apellido: f.referente?.apellido || 'Designada',
-          referente: `${f.referente?.nombre || ''} ${f.referente?.apellido || ''}`,
-          totalFaltas: faltasPrevias + 1
-        });
-      }
-    });
-
-    if (familiasAusentes.length === 0) {
-      setResultadoGuardado({ total: familias.length, ausentes: 0 });
-      setFamiliasCriticasReportadas([]);
+    if (familias.length === 0) {
+      setResultadoGuardado({ total: 0, ausentes: 0 });
       setModalGuardadoAbierto(true);
       setGuardando(false);
       return;
     }
 
     try {
-      const promesas = familiasAusentes.map((familia) =>
+      const familiasAusentes = familias.filter((familia) => estadosFamilias[familia.id_familia] === 'falta');
+
+      const promesas = familias.map((familia) =>
         createRegistroAsistenciaRequest({
           familia_id: parseInt(familia.id_familia, 10),
           id_familia: parseInt(familia.id_familia, 10),
           fecha: fechaSeleccionada,
-          estado: 'ausente',
+          estado: estadosFamilias[familia.id_familia] === 'falta' ? 'ausente' : 'presente',
         })
       );
 
       await Promise.all(promesas);
 
       setResultadoGuardado({ total: familias.length, ausentes: familiasAusentes.length });
-      setFamiliasCriticasReportadas(detectadasCriticas); // Seteamos las alertas consolidadas
       setModalGuardadoAbierto(true);
 
       await Promise.all([cargarFamilias(), cargarHistorial()]);
@@ -425,24 +407,6 @@ function Asistencia({ onNavegar, parametros }) {
                 Total: <strong>{resultadoGuardado.total}</strong> familias procesadas. Inasistencias de hoy: <strong>{resultadoGuardado.ausentes}</strong>.
               </p>
 
-              {/* 🚨 REPORTE DE ALERTAS CONSOLIDADO AL FINAL DEL DÍA */}
-              {familiasCriticasReportadas.length > 0 && (
-                <div style={{ marginTop: 'var(--space-md)', padding: 'var(--space-sm)', background: '#fff5f5', border: '1px solid #feb2b2', borderRadius: 'var(--radius-md)' }}>
-                  <h4 style={{ color: 'var(--color-danger)', fontSize: 'var(--text-sm)', fontWeight: 700, marginBottom: '6px' }}>
-                    ⚠️ REPORTE DE AUSENTISMO CRÍTICO (Racha de {fechaSeleccionada.split('-')[1]}/2026)
-                  </h4>
-                  <p style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '8px' }}>
-                    Las siguientes familias acumularon 3 o más faltas consecutivas hoy. Se sugiere derivar a auditoría social:
-                  </p>
-                  <ul style={{ paddingLeft: 'var(--space-md)', margin: 0, fontSize: 'var(--text-sm)' }}>
-                    {familiasCriticasReportadas.map((f) => (
-                      <li key={f.id} style={{ color: '#9b2c2c', marginBottom: '4px', fontWeight: 600 }}>
-                        ❌ Familia {f.apellido} <span style={{ fontWeight: 500, color: '#4a5568' }}>(Ref: {f.referente})</span> — {f.totalFaltas} Faltas Seguidas.
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
             <div className="modal-footer">
               <button className="btn-primary" style={{ minHeight: '40px' }} onClick={() => setModalGuardadoAbierto(false)}>Entendido</button>
