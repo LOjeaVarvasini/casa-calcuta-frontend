@@ -136,18 +136,28 @@ function Asistencia({ parametros }) {
     });
   }, [familias, busqueda]);
 
-  const calcularTriadaHistorial = useCallback((familiaId) => {
+  const obtenerHistorialReciente = useCallback((familiaId) => {
     const registros = historialAsistencia[familiaId] || [];
-    const mapeoEstados = registros.map((r) => {
-      const est = (r.estado || '').toLowerCase().trim();
-      return !(est === 'ausente' || est === 'falta' || est === 'no retiró');
+
+    const ultimosCincoEventos = registros.slice(-5).map((registro) => {
+      const fechaISO = (registro.fecha || '').split('T')[0];
+      const est = (registro.estado || '').toLowerCase().trim();
+
+      return {
+        asistio: !(est === 'ausente' || est === 'falta' || est === 'no retiró'),
+        fecha: fechaISO ? formatearFechaLegible(fechaISO) : 'Fecha sin registro',
+        esRelleno: false,
+      };
     });
 
-    const ultimosTresEventos = mapeoEstados.slice(-3);
-    const casillerosFaltantes = Math.max(0, 3 - ultimosTresEventos.length);
-    const rellenoVerde = Array(casillerosFaltantes).fill(true);
+    const casillerosFaltantes = Math.max(0, 5 - ultimosCincoEventos.length);
+    const relleno = Array.from({ length: casillerosFaltantes }, () => ({
+      asistio: true,
+      fecha: 'Sin registro previo',
+      esRelleno: true,
+    }));
 
-    return [...rellenoVerde, ...ultimosTresEventos];
+    return [...relleno, ...ultimosCincoEventos];
   }, [historialAsistencia]);
 
   // Algoritmo con validación de brecha temporal de 7 días (Anti-Falsos Positivos)
@@ -230,7 +240,10 @@ function Asistencia({ parametros }) {
     }
   };
 
-  const totalRacionesProvisionales = familias.length * 3;
+  const totalRacionesProvisionales = familias.reduce(
+    (total, family) => total + (Number(family.porciones_comida) || 0),
+    0
+  );
 
   return (
     <div className="attendance-view" style={{ width: '100%' }}>
@@ -320,7 +333,7 @@ function Asistencia({ parametros }) {
               )}
               {familiasFiltradas.map((family) => {
                 const ref = family.referente || {};
-                const triada = calcularTriadaHistorial(family.id_familia);
+                const historialReciente = obtenerHistorialReciente(family.id_familia);
                 const faltasConsecutivas = faltasConsecutivasMap[family.id_familia] || 0;
                 const estaAusente = estadosFamilias[family.id_familia] === 'falta';
 
@@ -336,24 +349,30 @@ function Asistencia({ parametros }) {
                     </td>
                     <td data-label="Raciones">
                       <span className="badge badge-primary" style={{ textTransform: 'none' }}>
-                        3 Porciones
+                        {Number(family.porciones_comida) || 0} Porciones
                       </span>
                     </td>
                     <td data-label="Historial">
-                      <div className="history-dots" style={{ display: 'flex', gap: '6px', alignItems: 'center', justifyContent: 'flex-start', minHeight: '12px' }}>
-                        {triada.map((asistio, idx) => (
+                      <div className="history-dots" style={{ display: 'flex', gap: '6px', alignItems: 'center', justifyContent: 'flex-start', flexWrap: 'wrap', minHeight: '12px' }}>
+                        {historialReciente.map((evento, idx) => (
                           <span
                             key={`dot-${family.id_familia}-${idx}`}
-                            title={asistio ? 'Retiró' : 'No retiró'}
+                            title={evento.esRelleno ? evento.fecha : `${evento.fecha} - ${evento.asistio ? 'Retiró' : 'No retiró'}`}
+                            aria-label={evento.esRelleno ? evento.fecha : `${evento.fecha} - ${evento.asistio ? 'Retiró' : 'No retiró'}`}
                             style={{
                               width: '10px',
                               height: '10px',
                               borderRadius: '50%',
                               display: 'inline-block',
-                              backgroundColor: asistio ? '#22c55e' : '#ef4444'
+                              backgroundColor: evento.asistio ? '#22c55e' : '#ef4444'
                             }}
                           ></span>
                         ))}
+                        {family.ausentismo_critico === true && (
+                          <span className="badge badge-danger" style={{ textTransform: 'none' }}>
+                            Ausentismo crítico
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td data-label="Control" style={{ textAlign: 'center' }}>
