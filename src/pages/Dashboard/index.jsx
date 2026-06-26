@@ -1,82 +1,121 @@
 import { useEffect, useMemo, useState } from 'react'
 import './dashboard.css'
 import {
+  getFamiliasRequest,
   getCumpleanosProximosRequest,
   getNotificacionesRequest,
   marcarNotificacionVistaRequest,
 } from '../../config/api.js'
 
+const esNotificacionValida = (valor) => {
+  return Boolean(
+    valor &&
+    typeof valor === 'object' &&
+    !Array.isArray(valor) &&
+    (
+      'motivo' in valor ||
+      'id' in valor ||
+      'id_notificacion' in valor ||
+      'notificacion_id' in valor
+    )
+  )
+}
+
+const extraerListaNotificaciones = (respuesta) => {
+  const candidatos = [
+    respuesta?.data?.data,
+    respuesta?.data?.notifications,
+    respuesta?.data,
+    respuesta?.notifications,
+    respuesta,
+  ]
+
+  for (const candidato of candidatos) {
+    if (Array.isArray(candidato)) {
+      return candidato
+    }
+
+    if (esNotificacionValida(candidato)) {
+      return [candidato]
+    }
+  }
+
+  return []
+}
+
+const obtenerTimestampNotificacion = (notificacion) => {
+  const candidato =
+    notificacion?.created_at ||
+    notificacion?.fecha ||
+    notificacion?.updated_at ||
+    notificacion?.generated_at ||
+    notificacion?.fecha_creacion
+
+  const timestamp = candidato ? new Date(candidato).getTime() : 0
+  return Number.isNaN(timestamp) ? 0 : timestamp
+}
+
+const esCumpleanoValido = (valor) => {
+  return Boolean(
+    valor &&
+    typeof valor === 'object' &&
+    !Array.isArray(valor) &&
+    (
+      'nombre' in valor ||
+      'apellido' in valor ||
+      'integrante' in valor ||
+      'fecha' in valor ||
+      'edad' in valor
+    )
+  )
+}
+
+const extraerListaCumpleanos = (respuesta) => {
+  const candidatos = [
+    respuesta?.data?.data,
+    respuesta?.data?.cumpleanos,
+    respuesta?.data?.cumpleaños,
+    respuesta?.data,
+    respuesta?.cumpleanos,
+    respuesta?.cumpleaños,
+    respuesta,
+  ]
+
+  for (const candidato of candidatos) {
+    if (Array.isArray(candidato)) {
+      return candidato
+    }
+
+    if (esCumpleanoValido(candidato)) {
+      return [candidato]
+    }
+  }
+
+  return []
+}
+
+const obtenerNombreCumpleano = (cumpleano) => {
+  const integrante = cumpleano?.integrante
+  const nombre = integrante?.nombre || cumpleano?.nombre || ''
+  const apellido = integrante?.apellido || cumpleano?.apellido || ''
+  return `${nombre} ${apellido}`.trim() || cumpleano?.motivo || 'Integrante'
+}
+
+const esFamiliaActiva = (familia) => {
+  return (familia?.estado_lista || '').toUpperCase() === 'PRINCIPAL' && familia?.activa === true
+}
+
+const esFamiliaEnEspera = (familia) => {
+  return (familia?.estado_lista || '').toUpperCase() === 'ESPERA'
+}
+
 function Dashboard({ onNavegar = () => {} }) {
   const [notificacionesCriticas, setNotificacionesCriticas] = useState([])
   const [cumpleanosProximos, setCumpleanosProximos] = useState([])
+  const [familias, setFamilias] = useState([])
   const [cargandoNotificaciones, setCargandoNotificaciones] = useState(true)
   const [cargandoCumpleanos, setCargandoCumpleanos] = useState(true)
-
-  const esNotificacionValida = (valor) => {
-    return Boolean(
-      valor &&
-      typeof valor === 'object' &&
-      !Array.isArray(valor) &&
-      (
-        'motivo' in valor ||
-        'id' in valor ||
-        'id_notificacion' in valor ||
-        'notificacion_id' in valor
-      )
-    )
-  }
-
-  const extraerListaNotificaciones = (respuesta) => {
-    const candidatos = [
-      respuesta?.data?.data,
-      respuesta?.data?.notifications,
-      respuesta?.data,
-      respuesta?.notifications,
-      respuesta,
-    ]
-
-    for (const candidato of candidatos) {
-      if (Array.isArray(candidato)) {
-        return candidato
-      }
-
-      if (esNotificacionValida(candidato)) {
-        return [candidato]
-      }
-    }
-
-    return []
-  }
-
-  const obtenerTimestampNotificacion = (notificacion) => {
-    const candidato =
-      notificacion?.created_at ||
-      notificacion?.fecha ||
-      notificacion?.updated_at ||
-      notificacion?.generated_at ||
-      notificacion?.fecha_creacion
-
-    const timestamp = candidato ? new Date(candidato).getTime() : 0
-    return Number.isNaN(timestamp) ? 0 : timestamp
-  }
-
-  const formatearFechaCumple = (valor) => {
-    if (!valor) {
-      return ''
-    }
-
-    const fecha = new Date(valor)
-
-    if (Number.isNaN(fecha.getTime())) {
-      return valor
-    }
-
-    return new Intl.DateTimeFormat('es-AR', {
-      day: 'numeric',
-      month: 'long',
-      timeZone: 'UTC',
-    }).format(fecha)
-  }
+  const [cargandoFamilias, setCargandoFamilias] = useState(true)
 
   const formatearFechaCumpleConDOW = (valor) => {
     if (!valor) {
@@ -95,52 +134,6 @@ function Dashboard({ onNavegar = () => {} }) {
       month: 'long',
       timeZone: 'UTC',
     }).format(fecha)
-  }
-
-  const esCumpleanoValido = (valor) => {
-    return Boolean(
-      valor &&
-      typeof valor === 'object' &&
-      !Array.isArray(valor) &&
-      (
-        'nombre' in valor ||
-        'apellido' in valor ||
-        'integrante' in valor ||
-        'fecha' in valor ||
-        'edad' in valor
-      )
-    )
-  }
-
-  const extraerListaCumpleanos = (respuesta) => {
-    const candidatos = [
-      respuesta?.data?.data,
-      respuesta?.data?.cumpleanos,
-      respuesta?.data?.cumpleaños,
-      respuesta?.data,
-      respuesta?.cumpleanos,
-      respuesta?.cumpleaños,
-      respuesta,
-    ]
-
-    for (const candidato of candidatos) {
-      if (Array.isArray(candidato)) {
-        return candidato
-      }
-
-      if (esCumpleanoValido(candidato)) {
-        return [candidato]
-      }
-    }
-
-    return []
-  }
-
-  const obtenerNombreCumpleano = (cumpleano) => {
-    const integrante = cumpleano?.integrante
-    const nombre = integrante?.nombre || cumpleano?.nombre || ''
-    const apellido = integrante?.apellido || cumpleano?.apellido || ''
-    return `${nombre} ${apellido}`.trim() || cumpleano?.motivo || 'Integrante'
   }
 
   useEffect(() => {
@@ -187,6 +180,23 @@ function Dashboard({ onNavegar = () => {} }) {
     cargarCumpleanos()
   }, [])
 
+  useEffect(() => {
+    const cargarFamilias = async () => {
+      setCargandoFamilias(true)
+
+      try {
+        const respuesta = await getFamiliasRequest('per_page=100')
+        setFamilias(respuesta?.data || [])
+      } catch {
+        setFamilias([])
+      } finally {
+        setCargandoFamilias(false)
+      }
+    }
+
+    cargarFamilias()
+  }, [])
+
   const notificacionesVisibles = useMemo(() => notificacionesCriticas.slice(0, 15), [notificacionesCriticas])
   const mostrarBadge = notificacionesVisibles.length >= 2
   const cumpleanosVisibles = useMemo(() => cumpleanosProximos.slice(0, 15), [cumpleanosProximos])
@@ -205,6 +215,12 @@ function Dashboard({ onNavegar = () => {} }) {
         segundoCumpleano?.fecha_cumple || segundoCumpleano?.dia || segundoCumpleano?.dia_semana || segundoCumpleano?.diaSemana || segundoCumpleano?.fecha || ''
       )
     : ''
+  const familiasActivas = useMemo(() => familias.filter(esFamiliaActiva), [familias])
+  const familiasEnEspera = useMemo(() => familias.filter(esFamiliaEnEspera), [familias])
+  const totalPorcionesAPreparar = useMemo(
+    () => familiasActivas.reduce((total, familia) => total + (Number(familia.porciones_comida) || 0), 0),
+    [familiasActivas]
+  )
 
   const handleMarcarVista = async (notificacion) => {
     const notificacionId = notificacion?.id ?? notificacion?.id_notificacion ?? notificacion?.notificacion_id
@@ -263,11 +279,20 @@ function Dashboard({ onNavegar = () => {} }) {
               </div>
             )}
 
-            {!cargandoNotificaciones && notificacionesVisibles.map((notificacion) => {
+            {!cargandoNotificaciones && notificacionesVisibles.map((notificacion, index) => {
               const notificacionId = notificacion?.id ?? notificacion?.id_notificacion ?? notificacion?.notificacion_id
+              const capasRestantes = notificacionesVisibles.length - index
 
               return (
-                <div key={notificacionId} className="alert-card alert-danger alert-notification-card">
+                <div
+                  key={notificacionId}
+                  className="alert-card alert-danger alert-notification-card"
+                  style={{
+                    zIndex: capasRestantes,
+                    opacity: index === 0 ? 1 : 0,
+                    pointerEvents: index === 0 ? 'auto' : 'none',
+                  }}
+                >
                   <div className="alert-icon">⚠️</div>
                   <div className="alert-body">
                     <div className="text-desktop">
@@ -347,7 +372,7 @@ function Dashboard({ onNavegar = () => {} }) {
         <div className="metric-card">
           <span className="card-icon">🍲</span>
           <div className="metric-data">
-            <span className="metric-value">[Cant.]</span>
+            <span className="metric-value">{cargandoFamilias ? '...' : totalPorcionesAPreparar}</span>
             <span className="metric-label">Porciones a Preparar</span>
           </div>
         </div>
@@ -355,7 +380,7 @@ function Dashboard({ onNavegar = () => {} }) {
         <div className="metric-card">
           <span className="card-icon">👨‍👩‍👧‍👦</span>
           <div className="metric-data">
-            <span className="metric-value">[Cant.]</span>
+            <span className="metric-value">{cargandoFamilias ? '...' : familiasActivas.length}</span>
             <span className="metric-label">Familias Activas</span>
           </div>
         </div>
@@ -363,7 +388,7 @@ function Dashboard({ onNavegar = () => {} }) {
           <div className="metric-card">
             <span className="card-icon">⏳</span>
             <div className="metric-data">
-              <span className="metric-value">[Cant.]</span>
+              <span className="metric-value">{cargandoFamilias ? '...' : familiasEnEspera.length}</span>
               <span className="metric-label">Familias en Espera</span>
             </div>
           </div>
