@@ -15,13 +15,14 @@ function Familias({ onNavegar }) {
   const [familias, setFamilias] = useState([]);
   const [paginacion, setPaginacion] = useState(null);
 
-  // Estados de UI de la Grilla (Filtros dinámicos conectados a los 5 endpoints de Ignacio)
+  // Estados de UI de la Grilla (Filtros dinámicos conectados a los endpoints de Ignacio)
+  // 🍏 NOTA: el filtro de Estado de Lista (PRINCIPAL/ESPERA) fue removido de esta
+  // pantalla porque ya existe una vista dedicada (Listas de Espera) para ese caso de uso.
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [evaluadaFilter, setEvaluadaFilter] = useState(''); // 🍏 Filtro 2 y 3: Evaluadas / No Evaluadas
-  const [estadoListaFilter, setEstadoListaFilter] = useState(''); // 🍏 Filtro 4: PRINCIPAL / ESPERA
   const [sortByFilter, setSortByFilter] = useState(''); // 🍏 Filtro 5: Ordenar por Puntaje
 
   // Estados del modal de Nueva Familia (Flujo por etapas)
@@ -83,7 +84,6 @@ function Familias({ onNavegar }) {
     // Permitimos resetear pasándolos por parámetro o leyendo los estados reactivos
     const fPrioridad = filtrosManuales.priorityFilter !== undefined ? filtrosManuales.priorityFilter : priorityFilter;
     const fEvaluada = filtrosManuales.evaluadaFilter !== undefined ? filtrosManuales.evaluadaFilter : evaluadaFilter;
-    const fEstadoLista = filtrosManuales.estadoListaFilter !== undefined ? filtrosManuales.estadoListaFilter : estadoListaFilter;
     const fSortBy = filtrosManuales.sortByFilter !== undefined ? filtrosManuales.sortByFilter : sortByFilter;
 
     try {
@@ -106,11 +106,6 @@ function Familias({ onNavegar }) {
       // 2 y 3. Filtro de Evaluadas o No Evaluadas
       if (fEvaluada) {
         queryParams.append('evaluada', fEvaluada);
-      }
-
-      // 4. Filtro por Estado de Lista
-      if (fEstadoLista) {
-        queryParams.append('estado_lista', fEstadoLista);
       }
 
       // 5. Filtro Ordenado por Puntaje Descendente
@@ -136,7 +131,7 @@ function Familias({ onNavegar }) {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, priorityFilter, evaluadaFilter, estadoListaFilter, sortByFilter]);
+  }, [searchTerm, priorityFilter, evaluadaFilter, sortByFilter]);
 
   useEffect(() => {
     cargarFamilias();
@@ -147,7 +142,7 @@ function Familias({ onNavegar }) {
   // ==========================================================================
   const familiasFiltradas = familias.filter((familia) => {
     if (!searchTerm) return true;
-    
+
     const term = searchTerm.toLowerCase().trim();
     const referente = familia.referente;
 
@@ -166,7 +161,7 @@ function Familias({ onNavegar }) {
   // FLUJO DE CONTROL DE "VER FICHA"
   // ==========================================================================
   const handleAbrirFicha = async (idFamilia) => {
-    setFamiliaCreadaId(idFamilia); 
+    setFamiliaCreadaId(idFamilia);
     setShowFichaModal(true);
     setLoadingFicha(true);
     setFichaError(null);
@@ -285,14 +280,13 @@ function Familias({ onNavegar }) {
       activa: true,
     });
     setSaveSuccess(null);
-    
+
     // Al cerrar post-creación, reseteamos todos los selectores del toolbar
     setSearchTerm('');
     setPriorityFilter('');
     setEvaluadaFilter('');
-    setEstadoListaFilter('');
     setSortByFilter('');
-    cargarFamilias({ priorityFilter: '', evaluadaFilter: '', estadoListaFilter: '', sortByFilter: '' });
+    cargarFamilias({ priorityFilter: '', evaluadaFilter: '', sortByFilter: '' });
   };
 
   // ==========================================================================
@@ -311,6 +305,23 @@ function Familias({ onNavegar }) {
     setIntegranteError(null);
     setIntegranteSuccess(null);
 
+    // 🚨 FIX CRÍTICO: Cálculo riguroso de la categoría etaria basada en la fecha de nacimiento
+    let categoriaEtaria = 'MENOR';
+    if (integranteData.fecha_nacimiento) {
+      const fechaNac = new Date(integranteData.fecha_nacimiento);
+      const hoy = new Date();
+      let edad = hoy.getFullYear() - fechaNac.getFullYear();
+      const mes = hoy.getMonth() - fechaNac.getMonth();
+      
+      if (mes < 0 || (mes === 0 && hoy.getDate() < fechaNac.getDate())) {
+        edad--;
+      }
+      
+      if (edad >= 18) {
+        categoriaEtaria = 'ADULTO';
+      }
+    }
+
     const payload = {
       name: integranteData.nombre,
       nombre: integranteData.nombre,
@@ -320,12 +331,13 @@ function Familias({ onNavegar }) {
       numero_documento: integranteData.numero_documento,
       referente: 0,
       familia_id: parseInt(familiaCreadaId, 10),
+      categoria_etaria: categoriaEtaria, // Sanitización precisa para evitar el 422 de Laravel Cloud
     };
 
     try {
       await createIntegranteRequest(payload);
-      setIntegranteSuccess(`¡${integranteData.nombre} fue añadido correctamente!`);
-      
+      setIntegranteSuccess(`¡${integranteData.nombre} fue añadido correctamente como ${categoriaEtaria.toLowerCase()}!`);
+
       setIntegranteData({
         nombre: '',
         apellido: '',
@@ -334,7 +346,7 @@ function Familias({ onNavegar }) {
         numero_documento: '',
       });
 
-      cargarFamilias(); 
+      cargarFamilias();
       if (showFichaModal) refrescarFichaEnCaliente();
 
       setTimeout(() => {
@@ -386,18 +398,17 @@ function Familias({ onNavegar }) {
       setTimeout(() => {
         setShowReferenteModal(false);
         setReferenteSuccess(null);
-        
+
         if (showPostCreacion) {
           setSearchTerm('');
           setPriorityFilter('');
           setEvaluadaFilter('');
-          setEstadoListaFilter('');
           setSortByFilter('');
           setShowNuevoModal(false);
           setShowPostCreacion(false);
           setFamiliaCreadaId(null);
           setSaveSuccess(null);
-          cargarFamilias({ searchTerm: '', priorityFilter: '', evaluadaFilter: '', estadoListaFilter: '', sortByFilter: '' });
+          cargarFamilias({ searchTerm: '', priorityFilter: '', evaluadaFilter: '', sortByFilter: '' });
         } else {
           cargarFamilias();
           refrescarFichaEnCaliente();
@@ -437,10 +448,12 @@ function Familias({ onNavegar }) {
 
   return (
     <div>
-      {/* 🍏 TOOLBAR EXPANDIDO CON LOS 5 SELECTORES DISPONIBLES DE LA API */}
+      {/* 🍏 TOOLBAR CON LOS SELECTORES DISPONIBLES DE LA API
+          (Se removió el filtro de Estado de Lista: ese filtrado ya vive en la
+          pantalla dedicada de Listas de Espera, así que no tiene sentido duplicarlo aquí) */}
       <section className="page-toolbar" style={{ flexDirection: 'column', gap: 'var(--space-sm)', alignItems: 'stretch' }}>
-        <div className="search-filter-group" style={{ display: 'grid', gridTemplateColumns: '2fr repeat(4, 1fr)', gap: 'var(--space-xs)', width: '100%' }}>
-          
+        <div className="search-filter-group" style={{ display: 'grid', gridTemplateColumns: '2fr repeat(3, 1fr)', gap: 'var(--space-xs)', width: '100%' }}>
+
           {/* Buscador de Referente */}
           <div className="form-group">
             <input
@@ -474,18 +487,6 @@ function Familias({ onNavegar }) {
               <option value="">Evaluación (Todas)</option>
               <option value="true">Evaluadas</option>
               <option value="false">No Evaluadas</option>
-            </select>
-          </div>
-
-          {/* Selector 4: Estado de Lista */}
-          <div className="form-group">
-            <select
-              value={estadoListaFilter}
-              onChange={(e) => setEstadoListaFilter(e.target.value)}
-            >
-              <option value="">Listas (Todas)</option>
-              <option value="PRINCIPAL">Principal</option>
-              <option value="ESPERA">Espera</option>
             </select>
           </div>
 
@@ -710,11 +711,7 @@ function Familias({ onNavegar }) {
         <div className="modal-overlay" onClick={handleCerrarModalCreacion}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              {/* ⚠️ NOTA TÉCNICA (preexistente, no corregida por fuera de alcance):
-                  "familyCreatedId" no existe como variable definida en este componente.
-                  El estado real se llama "familiaCreadaId". Esta condición nunca evalúa true
-                  por una referencia indefinida y debería lanzar ReferenceError en runtime. */}
-              <h3>➕ Nueva Familia {familyCreatedId && `(#${familiaCreadaId})`}</h3>
+              <h3>➕ Nueva Familia {familiaCreadaId && `(#${familiaCreadaId})`}</h3>
             </div>
 
             {!showPostCreacion ? (
