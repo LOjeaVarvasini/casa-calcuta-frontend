@@ -365,3 +365,65 @@ export async function updateComisionFamiliaRequest(familiaId, nuevaComision) {
     }),
   });
 }
+
+// ==========================================================================
+// FUNCIONES DE DONACIONES (INTEGRACIÓN BACKEND)
+// ==========================================================================
+
+/**
+ * PETICIÓN 1: Obtiene el listado paginado de donaciones registradas.
+ * @param {string} [queryParams] Query string opcional (ej: "per_page=15")
+ * @returns {Promise<Object>} Respuesta paginada con data[], links, meta, etc.
+ */
+export async function getDonacionesRequest(queryParams = 'per_page=15') {
+  const token = localStorage.getItem('access_token');
+  const path = queryParams ? `/api/donaciones?${queryParams}` : '/api/donaciones';
+
+  return apiRequest(path, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+}
+
+/**
+ * PETICIÓN 2: Registra el ingreso de una nueva donación.
+ * @param {Object} payload Estructura con origen, descripcion, cantidad, unidad_medida, fecha_recepcion, registrado_por, familia_id.
+ */
+export async function createDonacionRequest(payload) {
+  const token = localStorage.getItem('access_token');
+
+  return apiRequest('/api/donaciones', {
+    method: 'POST',
+    redirect: 'manual', // 🛡️ Evita bloqueos falsos de CORS por desvíos 302 internos
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * PETICIÓN 3: Ajusta/actualiza una donación existente.
+ * @param {number|string} donacionId
+ * @param {Object} payload Estructura con origen, descripcion, cantidad, unidad_medida, fecha_recepcion, registrado_por, familia_id.
+ */
+export async function updateDonacionRequest(donacionId, payload) {
+  const token = localStorage.getItem('access_token');
+  const id = parseInt(donacionId, 10);
+
+  return apiRequest(`/api/donaciones/${id}`, {
+    method: 'PUT',
+    redirect: 'manual', // 🛡️ Evita bloqueos de CORS falsos por desvíos 302
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+}
