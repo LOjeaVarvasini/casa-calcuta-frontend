@@ -81,6 +81,12 @@ function Comisiones({ onNavegar, parametros }) {
     setSelectedFamily(null);
   };
 
+  // Navega de vuelta a la pantalla de origen (declarada por quien navegó hacia Comisiones).
+  // Si no se especificó un "origen" en los parametros de navegacion, volvemos al dashboard por defecto.
+  const handleVolver = () => {
+    onNavegar(parametros?.origen || 'dashboard');
+  };
+
   return (
     <div className="comisiones-module">
 
@@ -93,7 +99,7 @@ function Comisiones({ onNavegar, parametros }) {
         </p>
       </div>
 
-      {/* BARRA DE BÚSQUEDA */}
+      {/* BARRA DE BÚSQUEDA + VOLVER */}
       <section className="page-toolbar comisiones-toolbar">
         <input
           type="text"
@@ -102,6 +108,13 @@ function Comisiones({ onNavegar, parametros }) {
           onChange={(e) => setBusqueda(e.target.value)}
           className="form-control comisiones-search-input"
         />
+        <button
+          type="button"
+          className="btn-primary comisiones-volver-btn"
+          onClick={handleVolver}
+        >
+          ← Volver
+        </button>
       </section>
 
       {loading && (

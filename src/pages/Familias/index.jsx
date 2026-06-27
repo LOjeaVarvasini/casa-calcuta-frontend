@@ -565,7 +565,7 @@ function Familias({ onNavegar }) {
                     type="button"
                     className="btn-table-action action-secondary"
                     style={{ backgroundColor: 'rgba(0,0,0,0.04)', borderColor: 'rgba(0,0,0,0.08)', color: '#4a5568' }}
-                    onClick={() => onNavegar('comisiones', { familiaId: family.id_familia })}
+                    onClick={() => onNavegar('comisiones', { familiaId: family.id_familia, origen: 'familias' })}
                   >
                     Comisión
                   </button>
