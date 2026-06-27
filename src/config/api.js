@@ -427,3 +427,58 @@ export async function updateDonacionRequest(donacionId, payload) {
     body: JSON.stringify(payload),
   });
 }
+
+// ==========================================================================
+// FUNCIONES DE CONTROL DE LISTAS (INTEGRACIÓN BACKEND)
+// ==========================================================================
+
+/**
+ * PETICIÓN 1: Obtiene el listado de familias filtrado por su estado en las listas.
+ * @param {string} estadoLista - Tipo de lista ('ESPERA', 'PRINCIPAL', 'INACTIVA').
+ * @param {string} [queryParams] - Query string complementario opcional.
+ * @returns {Promise<Object>} Respuesta paginada con data[], links, meta, etc.
+ */
+export async function getFamiliasPorListaRequest(estadoLista, queryParams = 'per_page=100') {
+  const token = localStorage.getItem('access_token');
+  const estadoSanitizado = estadoLista.toUpperCase().trim();
+  const path = `/api/familias?estado_lista=${estadoSanitizado}&${queryParams}`;
+
+  return apiRequest(path, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+}
+
+/**
+ * PETICIÓN 2: Actualiza el estado de lista o prioridad de una familia (Promover/Degradar).
+ * Aplica blindaje mutativo anti-CORS de Laravel Cloud.
+ * @param {number|string} familiaId - ID de la familia a modificar.
+ * @param {Object} payload - Objeto que contiene el nuevo estado_lista y registrado_por.
+ */
+export async function updateEstadoListaRequest(familiaId, payload) {
+  const token = localStorage.getItem('access_token');
+  const id = parseInt(familiaId, 10);
+
+  // Sanitización estricta del payload antes de golpear Laravel
+  const bodyPayload = {
+    estado_lista: (payload.estado_lista || '').toUpperCase().trim(),
+    estadoLista: (payload.estado_lista || '').toUpperCase().trim(), // Doble juego seguro anti-FormRequest
+    registrado_por: payload.registrado_por ? parseInt(payload.registrado_por, 10) : 1,
+  };
+
+  return apiRequest(`/api/familias/${id}`, {
+    method: 'PUT',
+    redirect: 'manual', // 🛡️ Evita bloqueos falsos de CORS por desvíos 302 internos de Laravel
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(bodyPayload),
+  });
+}
+
+
