@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard/index.jsx'
 import Familias from './pages/Familias/index.jsx'
 import Asistencia from './pages/Asistencia/index.jsx'
 import Comisiones from './pages/Comisiones/index.jsx'
+import Donaciones from './pages/Donaciones/index.jsx'
 import Sidebar from './components/common/Sidebar.jsx'
 import BottomNav from './components/common/BottomNav.jsx'
 import { logoutRequest, meRequest } from './config/api.js'
@@ -112,6 +113,7 @@ function App() {
               esta prop nunca le va a llegar. Queda documentado, no corregido por fuera de alcance. */}
           {pantallaActual === 'asistencia' && <Asistencia onNavigate={handleNavegar} parametros={parametrosNavegacion} />}
           {pantallaActual === 'comisiones' && <Comisiones onNavegar={handleNavegar} parametros={parametrosNavegacion} />}
+          {pantallaActual === 'donaciones' && <Donaciones onNavegar={handleNavegar} />}
         </main>
 
       </div>
