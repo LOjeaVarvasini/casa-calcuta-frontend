@@ -1,0 +1,99 @@
+/* ==========================================================================
+   ESTILOS ESPECÍFICOS: COMPONENTES DE GESTIÓN DE COMISIONES
+   ========================================================================== */
+
+.comisiones-module {
+  width: 100%;
+}
+
+/* Hace que el select dentro de la tabla no use la altura máxima de un form aislado */
+.select-comision {
+  height: 36px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  background-color: var(--color-card);
+  border-color: var(--color-border);
+  max-width: 220px;
+  cursor: pointer;
+}
+
+.select-comision:focus {
+  border-color: var(--color-primary);
+}
+
+@media (max-width: 767px) {
+  /* En móviles forzamos a que el selector tome todo el espacio de la derecha de la tarjeta */
+  .select-comision {
+    max-width: 100%;
+    width: 60%;
+  }
+}
+
+/* Banner de error de sincronización */
+.comisiones-error-banner {
+  margin-bottom: var(--space-md);
+}
+
+/* Recuadro informativo celeste */
+.comisiones-info-box {
+  margin-bottom: var(--space-md);
+  background-color: #ebf8ff;
+  border-color: #bee3f8;
+  flex-direction: row;
+}
+
+.comisiones-info-text {
+  font-size: var(--text-sm);
+  color: #2b6cb0;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Barra de búsqueda */
+.comisiones-toolbar {
+  margin-bottom: var(--space-md);
+  padding: var(--space-sm);
+}
+
+.comisiones-search-input {
+  height: 40px;
+  font-size: var(--text-sm);
+}
+
+/* Estado de carga */
+.comisiones-loading-state {
+  text-align: center;
+  padding: 40px 0;
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* Estado vacío de la tabla */
+.comisiones-empty-state {
+  text-align: center;
+  padding: var(--space-lg);
+  color: #718096;
+}
+
+/* Texto de referencia del familiar a cargo */
+.comisiones-ref-text {
+  font-size: 0.8rem;
+  color: #718096;
+  margin: 0;
+}
+
+/* Modal de historial */
+.comisiones-modal-divider {
+  margin: 1rem 0;
+  border-color: var(--color-border);
+}
+
+.comisiones-history-placeholder {
+  font-size: var(--text-sm);
+  color: #718096;
+  margin: 4px 0;
+}
+
+.comisiones-modal-close-btn {
+  min-height: 40px;
+}

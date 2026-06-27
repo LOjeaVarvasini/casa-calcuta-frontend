@@ -565,7 +565,7 @@ function Familias({ onNavegar }) {
                     type="button"
                     className="btn-table-action action-secondary"
                     style={{ backgroundColor: 'rgba(0,0,0,0.04)', borderColor: 'rgba(0,0,0,0.08)', color: '#4a5568' }}
-                    onClick={() => alert('[Navegación] Ver comisión de familia ID: ' + family.id_familia)}
+                    onClick={() => onNavegar('comisiones', { familiaId: family.id_familia })}
                   >
                     Comisión
                   </button>
@@ -710,6 +710,10 @@ function Familias({ onNavegar }) {
         <div className="modal-overlay" onClick={handleCerrarModalCreacion}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
+              {/* ⚠️ NOTA TÉCNICA (preexistente, no corregida por fuera de alcance):
+                  "familyCreatedId" no existe como variable definida en este componente.
+                  El estado real se llama "familiaCreadaId". Esta condición nunca evalúa true
+                  por una referencia indefinida y debería lanzar ReferenceError en runtime. */}
               <h3>➕ Nueva Familia {familyCreatedId && `(#${familiaCreadaId})`}</h3>
             </div>
 
