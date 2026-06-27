@@ -101,6 +101,30 @@ const obtenerNombreCumpleano = (cumpleano) => {
   return `${nombre} ${apellido}`.trim() || cumpleano?.motivo || 'Integrante'
 }
 
+const calcularCondicionEdad = (cumpleano) => {
+  const integrante = cumpleano?.integrante
+  const fechaNacString = integrante?.fecha_nacimiento || cumpleano?.fecha_nacimiento || integrante?.fecha_nac || cumpleano?.fecha_nac || cumpleano?.fecha_nacimiento_original
+  
+  if (!fechaNacString) {
+    return ''
+  }
+
+  const fechaNac = new Date(fechaNacString)
+  if (Number.isNaN(fechaNac.getTime())) {
+    return ''
+  }
+
+  const hoy = new Date()
+  let edadCalculada = hoy.getFullYear() - fechaNac.getFullYear()
+  const mesDiff = hoy.getMonth() - fechaNac.getMonth()
+  
+  if (mesDiff < 0 || (mesDiff === 0 && hoy.getDate() < fechaNac.getDate())) {
+    edadCalculada--
+  }
+
+  return edadCalculada >= 18 ? '(Mayor de edad)' : '(Menor de edad)'
+}
+
 const esFamiliaActiva = (familia) => {
   return (familia?.estado_lista || '').toUpperCase() === 'PRINCIPAL' && familia?.activa === true
 }
@@ -205,16 +229,20 @@ function Dashboard({ onNavegar = () => {} }) {
 
   const nombreProximoCumpleano = proximoCumpleano ? obtenerNombreCumpleano(proximoCumpleano) : ''
   const edadProximoCumpleano = proximoCumpleano?.edad_a_cumplir || proximoCumpleano?.edad || proximoCumpleano?.anos || proximoCumpleano?.years || ''
+  const condicionEdadProximo = proximoCumpleano ? calcularCondicionEdad(proximoCumpleano) : ''
   const diaProximoCumpleano = formatearFechaCumpleConDOW(
     proximoCumpleano?.fecha_cumple || proximoCumpleano?.dia || proximoCumpleano?.dia_semana || proximoCumpleano?.diaSemana || proximoCumpleano?.fecha || ''
   )
+  
   const nombreSegundoCumpleano = segundoCumpleano ? obtenerNombreCumpleano(segundoCumpleano) : ''
   const edadSegundoCumpleano = segundoCumpleano?.edad_a_cumplir || segundoCumpleano?.edad || segundoCumpleano?.anos || segundoCumpleano?.years || ''
+  const condicionEdadSegundo = segundoCumpleano ? calcularCondicionEdad(segundoCumpleano) : ''
   const diaSegundoCumpleano = segundoCumpleano
     ? formatearFechaCumpleConDOW(
         segundoCumpleano?.fecha_cumple || segundoCumpleano?.dia || segundoCumpleano?.dia_semana || segundoCumpleano?.diaSemana || segundoCumpleano?.fecha || ''
       )
     : ''
+    
   const familiasActivas = useMemo(() => familias.filter(esFamiliaActiva), [familias])
   const familiasEnEspera = useMemo(() => familias.filter(esFamiliaEnEspera), [familias])
   const totalPorcionesAPreparar = useMemo(
@@ -230,7 +258,8 @@ function Dashboard({ onNavegar = () => {} }) {
     }
 
     try {
-      await marcarNotificacionVistaRequest(notificacionId)
+      const parsedId = parseInt(notificacionId, 10)
+      await marcarNotificacionVistaRequest(Number.isNaN(parsedId) ? notificacionId : parsedId)
       setNotificacionesCriticas((prev) => prev.filter((item) => String(item?.id ?? item?.id_notificacion ?? item?.notificacion_id) !== String(notificacionId)))
     } catch {
       // Si falla el marcado, mantenemos la notificación visible.
@@ -334,29 +363,22 @@ function Dashboard({ onNavegar = () => {} }) {
           <div className="alert-icon">🎂</div>
           <div className="alert-body birthday-alert-body">
             <div className="birthday-content">
-              <div className="text-desktop">
-                <h3>Próximos Cumpleaños (14 días)</h3>
-                {cargandoCumpleanos ? (
-                  <p>Cargando cumpleaños próximos...</p>
-                ) : proximoCumpleano ? (
-                  <p>
-                    <strong>{nombreProximoCumpleano}</strong> cumple {edadProximoCumpleano || '?'} años el próximo {diaProximoCumpleano || '[Día de la semana]'}.
-                    {segundoCumpleano && (
-                      <>
-                        {' '}
-                        <strong>{nombreSegundoCumpleano}</strong> cumple {edadSegundoCumpleano || '?'} años el próximo {diaSegundoCumpleano || '[Día de la semana]'}.
-                      </>
-                    )}
-                  </p>
-                ) : (
-                  <p>No hay cumpleaños dentro de los próximos 14 días.</p>
-                )}
-              </div>
-              <div className="text-mobile">
-                <span className="alert-text-mini">
-                  {cargandoCumpleanos ? 'Cargando cumpleaños' : nombreProximoCumpleano || 'Cumpleaños Cercano'}
-                </span>
-              </div>
+              <h3>Próximos Cumpleaños (14 días)</h3>
+              {cargandoCumpleanos ? (
+                <p>Cargando birthdays próximos...</p>
+              ) : proximoCumpleano ? (
+                <p>
+                  <strong>{nombreProximoCumpleano}</strong> {condicionEdadProximo} cumple {edadProximoCumpleano || '?'} años el próximo {diaProximoCumpleano || '[Día de la semana]'}.
+                  {segundoCumpleano && (
+                    <>
+                      {' '}
+                      <strong>{nombreSegundoCumpleano}</strong> {condicionEdadSegundo} cumple {edadSegundoCumpleano || '?'} años el próximo {diaSegundoCumpleano || '[Día de la semana]'}.
+                    </>
+                  )}
+                </p>
+              ) : (
+                <p>No hay cumpleaños dentro de los próximos 14 días.</p>
+              )}
             </div>
           </div>
           <a href="#familias" className="alert-action" onClick={(e) => { e.preventDefault(); onNavegar('familias'); }}>
@@ -385,13 +407,13 @@ function Dashboard({ onNavegar = () => {} }) {
           </div>
         </div>
 
-          <div className="metric-card">
-            <span className="card-icon">⏳</span>
-            <div className="metric-data">
-              <span className="metric-value">{cargandoFamilias ? '...' : familiasEnEspera.length}</span>
-              <span className="metric-label">Familias en Espera</span>
-            </div>
+        <div className="metric-card">
+          <span className="card-icon">⏳</span>
+          <div className="metric-data">
+            <span className="metric-value">{cargandoFamilias ? '...' : familiasEnEspera.length}</span>
+            <span className="metric-label">Familias en Espera</span>
           </div>
+        </div>
 
       </section>
 
