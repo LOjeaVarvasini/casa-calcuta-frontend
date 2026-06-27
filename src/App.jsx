@@ -3,6 +3,7 @@ import Login from './pages/Login/index.jsx'
 import Dashboard from './pages/Dashboard/index.jsx'
 import Familias from './pages/Familias/index.jsx'
 import Asistencia from './pages/Asistencia/index.jsx'
+import Comisiones from './pages/Comisiones/index.jsx'
 import Sidebar from './components/common/Sidebar.jsx'
 import BottomNav from './components/common/BottomNav.jsx'
 import { logoutRequest, meRequest } from './config/api.js'
@@ -91,6 +92,7 @@ function App() {
               {pantallaActual === 'dashboard' && 'Panel Principal'}
               {pantallaActual === 'familias' && 'Padrón Único de Familias'}
               {pantallaActual === 'asistencia' && 'Registro de Asistencia y Entrega'}
+              {pantallaActual === 'comisiones' && 'Gestión de Comisiones de Trabajo'}
               {pantallaActual === 'listas' && 'Listas de Espera'}
               {pantallaActual === 'donaciones' && 'Gestión de Donaciones'}
               {pantallaActual === 'usuarios' && 'Administración de Usuarios'}
@@ -105,7 +107,11 @@ function App() {
         <main className="main-content">
           {pantallaActual === 'dashboard' && <Dashboard onNavegar={handleNavegar} />}
           {pantallaActual === 'familias' && <Familias onNavegar={handleNavegar} />}
+          {/* ⚠️ NOTA TÉCNICA: Asistencia recibe "onNavigate" (inglés) mientras el resto de las vistas
+              recibe "onNavegar" (castellano). Si el componente interno de Asistencia espera "onNavegar",
+              esta prop nunca le va a llegar. Queda documentado, no corregido por fuera de alcance. */}
           {pantallaActual === 'asistencia' && <Asistencia onNavigate={handleNavegar} parametros={parametrosNavegacion} />}
+          {pantallaActual === 'comisiones' && <Comisiones onNavegar={handleNavegar} parametros={parametrosNavegacion} />}
         </main>
 
       </div>

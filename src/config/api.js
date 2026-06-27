@@ -340,3 +340,28 @@ export async function updateRegistroAsistenciaRequest(registroId, payload) {
     body: JSON.stringify(payload),
   });
 }
+
+/**
+ * Actualiza la comisión de trabajo asignada a una familia.
+ * @param {number|string} familiaId - ID de la familia a mutar.
+ * @param {string} nuevaComision - El string de la comisión ('cocina', 'ropero', 'limpieza', 'ninguna').
+ */
+export async function updateComisionFamiliaRequest(familiaId, nuevaComision) {
+  const token = localStorage.getItem('access_token');
+  const id = parseInt(familiaId, 10);
+
+  return apiRequest(`/api/familias/${id}`, {
+    method: 'PUT',
+    redirect: 'manual', // 🛡️ Evita bloqueos de CORS falsos por desvíos 302
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      comision_actual: nuevaComision.toLowerCase().trim(),
+      // Doble juego de variables por compatibilidad de FormRequest en Laravel
+      comisionActual: nuevaComision.toLowerCase().trim()
+    }),
+  });
+}
