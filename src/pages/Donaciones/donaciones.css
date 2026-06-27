@@ -1,0 +1,79 @@
+/* ==========================================================================
+   ESTILOS ESPECÍFICOS: COMPONENTES DE INVENTARIO Y DONACIONES
+   ========================================================================== */
+
+.stock-alerts-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.stock-alert-mini {
+  background-color: var(--color-card);
+  border-radius: var(--radius-md);
+  padding: 0.65rem var(--space-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  box-shadow: var(--shadow-sm);
+  border-left: 4px solid var(--color-border);
+}
+
+.alert-danger-zone {
+  border-left-color: var(--color-danger);
+  background-color: #fff5f5;
+}
+
+.alert-warning-zone {
+  border-left-color: var(--color-secondary);
+  background-color: #fffaf0;
+}
+
+.stock-alert-icon {
+  font-size: var(--text-md);
+}
+
+.stock-alert-text h4 {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.stock-alert-text p {
+  font-size: 0.8rem;
+  color: #4a5568;
+}
+
+.stock-count {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+/* Responsive para pantallas grandes */
+@media (min-width: 768px) {
+  .stock-alerts-grid {
+    flex-direction: row;
+  }
+  .stock-alert-mini {
+    flex: 1;
+    padding: var(--space-md);
+  }
+  .stock-alert-icon {
+    font-size: var(--text-xl);
+  }
+}
+
+/* ==========================================================================
+   ESTILO ÚNICO: MODAL DE AJUSTE DE STOCK
+   ========================================================================== */
+.ajuste-stock-actual {
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-md);
+  text-align: center;
+}
