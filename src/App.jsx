@@ -5,6 +5,8 @@ import Familias from './pages/Familias/index.jsx'
 import Asistencia from './pages/Asistencia/index.jsx'
 import Comisiones from './pages/Comisiones/index.jsx'
 import Donaciones from './pages/Donaciones/index.jsx'
+// ⏳ Importamos la nueva vista modular de Listas
+import Listas from './pages/Listas/index.jsx'
 import Sidebar from './components/common/Sidebar.jsx'
 import BottomNav from './components/common/BottomNav.jsx'
 import { logoutRequest, meRequest } from './config/api.js'
@@ -108,12 +110,11 @@ function App() {
         <main className="main-content">
           {pantallaActual === 'dashboard' && <Dashboard onNavegar={handleNavegar} />}
           {pantallaActual === 'familias' && <Familias onNavegar={handleNavegar} />}
-          {/* ⚠️ NOTA TÉCNICA: Asistencia recibe "onNavigate" (inglés) mientras el resto de las vistas
-              recibe "onNavegar" (castellano). Si el componente interno de Asistencia espera "onNavegar",
-              esta prop nunca le va a llegar. Queda documentado, no corregido por fuera de alcance. */}
           {pantallaActual === 'asistencia' && <Asistencia onNavigate={handleNavegar} parametros={parametrosNavegacion} />}
           {pantallaActual === 'comisiones' && <Comisiones onNavegar={handleNavegar} parametros={parametrosNavegacion} />}
           {pantallaActual === 'donaciones' && <Donaciones onNavegar={handleNavegar} />}
+          {/* ⏳ Inyección de la nueva pantalla interactiva mapeada */}
+          {pantallaActual === 'listas' && <Listas onNavegar={handleNavegar} parametros={parametrosNavegacion} />}
         </main>
 
       </div>
