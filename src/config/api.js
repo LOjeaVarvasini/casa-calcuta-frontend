@@ -1,5 +1,7 @@
 const RAW_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
+export const SESSION_EXPIRED_EVENT = 'auth:session-expired'
+
 export const ESTADO_LISTA_OPTIONS = [
   { value: 'PRINCIPAL', label: 'Principal' },
   { value: 'ESPERA', label: 'Espera' },
@@ -21,14 +23,14 @@ export const SITUACION_ALIMENTARIA_OPTIONS = [
 ]
 
 export const FRECUENCIA_ASISTENCIA_OPTIONS = [
-  { value: 'ocasional', label: 'Ocasional' },
+  { value: 'ocasional', label: 'Ocacional' },
   { value: 'semanal', label: 'Semanal' },
   { value: 'mas_de_una_vez', label: 'Más de una vez' },
 ]
 
 export const PARTICIPACION_MERENDERO_OPTIONS = [
   { value: 'no_participa', label: 'No participa' },
-  { value: 'ocasional', label: 'Ocasional' },
+  { value: 'ocasional', label: 'Ocacional' },
   { value: 'activa', label: 'Activa' },
 ]
 
@@ -47,6 +49,24 @@ function pickString(value) {
 function pickAllowedValue(value, allowedValues) {
   const normalized = pickString(value)
   return allowedValues.includes(normalized) ? normalized : ''
+}
+
+function normalizeMessage(value) {
+  return pickString(value)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+function isSessionExpiredMessage(value) {
+  const normalized = normalizeMessage(value)
+  return normalized.includes('sesion expiro') || normalized.includes('session expired')
+}
+
+function emitSessionExpired() {
+  if (typeof window === 'undefined') return
+
+  window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT))
 }
 
 function buildFamiliaBasePayload(payload = {}) {
@@ -167,9 +187,23 @@ export async function apiRequest(path, options = {}) {
 
   const data = await parseJsonResponse(response)
 
+  const message = data?.message || data?.error || response.statusText || ''
+  const sessionExpired = response.status === 401 || response.status === 419 || isSessionExpiredMessage(message)
+
+  if (sessionExpired) {
+    emitSessionExpired()
+
+    if (response.ok) {
+      const error = new Error(message || 'Tu sesión expiró. Volvé a iniciar sesión.')
+      error.status = response.status || 401
+      error.data = data
+      throw error
+    }
+  }
+
   // Modificamos para aceptar respuestas en el rango 200-299 o redirecciones controladas
   if (!response.ok && response.status !== 0) {
-    const error = new Error(data.message || data.error || 'No se pudo completar la solicitud')
+    const error = new Error(message || 'No se pudo completar la solicitud')
     error.status = response.status
     error.data = data
     throw error
