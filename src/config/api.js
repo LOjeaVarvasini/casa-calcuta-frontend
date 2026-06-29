@@ -1,5 +1,124 @@
 const RAW_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
+export const ESTADO_LISTA_OPTIONS = [
+  { value: 'PRINCIPAL', label: 'Principal' },
+  { value: 'ESPERA', label: 'Espera' },
+  { value: 'INACTIVA', label: 'Inactiva' },
+]
+
+export const PRIORIDAD_SOCIAL_OPTIONS = [
+  { value: 'muy_baja', label: 'Muy baja' },
+  { value: 'baja', label: 'Baja' },
+  { value: 'media', label: 'Media' },
+  { value: 'alta', label: 'Alta' },
+  { value: 'muy_alta', label: 'Muy alta' },
+]
+
+export const SITUACION_ALIMENTARIA_OPTIONS = [
+  { value: 'sin_urgencia', label: 'Sin urgencia' },
+  { value: 'moderada', label: 'Moderada' },
+  { value: 'urgente', label: 'Urgente' },
+]
+
+export const FRECUENCIA_ASISTENCIA_OPTIONS = [
+  { value: 'ocasional', label: 'Ocasional' },
+  { value: 'semanal', label: 'Semanal' },
+  { value: 'mas_de_una_vez', label: 'Más de una vez' },
+]
+
+export const PARTICIPACION_MERENDERO_OPTIONS = [
+  { value: 'no_participa', label: 'No participa' },
+  { value: 'ocasional', label: 'Ocasional' },
+  { value: 'activa', label: 'Activa' },
+]
+
+function coerceBoolean(value) {
+  if (value === true || value === 1 || value === '1') return true
+  if (typeof value === 'string') {
+    return value.toLowerCase().trim() === 'true'
+  }
+  return false
+}
+
+function pickString(value) {
+  return value === null || value === undefined ? '' : String(value).trim()
+}
+
+function pickAllowedValue(value, allowedValues) {
+  const normalized = pickString(value)
+  return allowedValues.includes(normalized) ? normalized : ''
+}
+
+function buildFamiliaBasePayload(payload = {}) {
+  const body = {}
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'direccion')) {
+    body.direccion = pickString(payload.direccion)
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'telefono')) {
+    body.telefono = pickString(payload.telefono)
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'estado_lista')) {
+    body.estado_lista = pickAllowedValue(
+      pickString(payload.estado_lista).toUpperCase(),
+      ESTADO_LISTA_OPTIONS.map((option) => option.value)
+    )
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'fecha_ingreso')) {
+    body.fecha_ingreso = pickString(payload.fecha_ingreso).slice(0, 10)
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'activa')) {
+    body.activa = coerceBoolean(payload.activa) ? 1 : 0
+  }
+
+  return body
+}
+
+function buildEvaluacionPrioridadPayload(payload = {}) {
+  return {
+    situacion_alimentaria: pickAllowedValue(payload.situacion_alimentaria, ['sin_urgencia', 'moderada', 'urgente']),
+    frecuencia_asistencia: pickAllowedValue(payload.frecuencia_asistencia, ['ocasional', 'semanal', 'mas_de_una_vez']),
+    participacion_merendero: pickAllowedValue(payload.participacion_merendero, ['no_participa', 'ocasional', 'activa']),
+  }
+}
+
+export function getApiErrorInfo(error, fallbackMessage = 'No se pudo completar la solicitud') {
+  const status = error?.status ?? error?.response?.status ?? null
+  const data = error?.data ?? error?.response?.data ?? null
+
+  if (status === 401) {
+    return { status, message: 'Tu sesión expiró. Volvé a iniciar sesión.', data }
+  }
+
+  if (status === 403) {
+    return { status, message: 'No tenés permisos para realizar esta acción.', data }
+  }
+
+  if (status === 422) {
+    const validationErrors = data?.errors && typeof data.errors === 'object'
+      ? Object.values(data.errors).flat().filter(Boolean)
+      : []
+
+    return {
+      status,
+      message: validationErrors.length
+        ? validationErrors.join(' ')
+        : data?.message || 'Hay errores de validación. Revisá los campos del formulario.',
+      data,
+    }
+  }
+
+  return {
+    status,
+    message: error?.message || data?.message || fallbackMessage,
+    data,
+  }
+}
+
 function normalizeBaseUrl(url) {
   return url.replace(/\/+$/, '')
 }
@@ -50,7 +169,10 @@ export async function apiRequest(path, options = {}) {
 
   // Modificamos para aceptar respuestas en el rango 200-299 o redirecciones controladas
   if (!response.ok && response.status !== 0) {
-    throw new Error(data.message || data.error || 'No se pudo completar la solicitud')
+    const error = new Error(data.message || data.error || 'No se pudo completar la solicitud')
+    error.status = response.status
+    error.data = data
+    throw error
   }
 
   return data
@@ -147,6 +269,7 @@ export async function getFamiliasRequest(queryParams = '') {
  */
 export async function createFamiliaRequest(payload) {
   const token = localStorage.getItem('access_token'); // 🍏 Recuperamos el token fresco del localStorage
+  const bodyPayload = buildFamiliaBasePayload(payload)
 
   return apiRequest('/api/familias', {
     method: 'POST',
@@ -156,7 +279,7 @@ export async function createFamiliaRequest(payload) {
       'Accept': 'application/json',       // Forzamos JSON
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(bodyPayload),
   });
 }
 
@@ -167,6 +290,7 @@ export async function createFamiliaRequest(payload) {
  */
 export async function updateFamiliaRequest(familiaId, payload) {
   const token = localStorage.getItem('access_token');
+  const bodyPayload = buildFamiliaBasePayload(payload)
 
   return apiRequest(`/api/familias/${parseInt(familiaId, 10)}`, {
     method: 'PUT',
@@ -176,8 +300,29 @@ export async function updateFamiliaRequest(familiaId, payload) {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(bodyPayload),
   });
+}
+
+/**
+ * Evalúa la priorización social de una familia.
+ * @param {number|string} familiaId
+ * @param {Object} payload
+ */
+export async function evaluatePrioridadFamiliaRequest(familiaId, payload) {
+  const token = localStorage.getItem('access_token')
+  const bodyPayload = buildEvaluacionPrioridadPayload(payload)
+
+  return apiRequest(`/api/familias/${parseInt(familiaId, 10)}/evaluar-prioridad`, {
+    method: 'POST',
+    redirect: 'manual',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(bodyPayload),
+  })
 }
 
 /**
@@ -499,26 +644,9 @@ export async function getFamiliasPorListaRequest(estadoLista, queryParams = 'per
  * @param {Object} payload - Objeto que contiene el nuevo estado_lista y registrado_por.
  */
 export async function updateEstadoListaRequest(familiaId, payload) {
-  const token = localStorage.getItem('access_token');
-  const id = parseInt(familiaId, 10);
-
-  // Sanitización estricta del payload antes de golpear Laravel
-  const bodyPayload = {
-    estado_lista: (payload.estado_lista || '').toUpperCase().trim(),
-    estadoLista: (payload.estado_lista || '').toUpperCase().trim(), // Doble juego seguro anti-FormRequest
-    registrado_por: payload.registrado_por ? parseInt(payload.registrado_por, 10) : 1,
-  };
-
-  return apiRequest(`/api/familias/${id}`, {
-    method: 'PUT',
-    redirect: 'manual', // 🛡️ Evita bloqueos falsos de CORS por desvíos 302 internos de Laravel
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(bodyPayload),
-  });
+  return updateFamiliaRequest(familiaId, {
+    estado_lista: payload.estado_lista,
+  })
 }
 
 
