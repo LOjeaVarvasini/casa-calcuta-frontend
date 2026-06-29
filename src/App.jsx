@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Login from './pages/Login/index.jsx'
 import Dashboard from './pages/Dashboard/index.jsx'
 import Familias from './pages/Familias/index.jsx'
@@ -9,13 +9,30 @@ import Donaciones from './pages/Donaciones/index.jsx'
 import Listas from './pages/Listas/index.jsx'
 import Sidebar from './components/common/Sidebar.jsx'
 import BottomNav from './components/common/BottomNav.jsx'
-import { logoutRequest, meRequest } from './config/api.js'
+import { SESSION_EXPIRED_EVENT, logoutRequest, meRequest } from './config/api.js'
 
 function App() {
   const [session, setSession] = useState(null)
   const [booting, setBooting] = useState(true)
   const [pantallaActual, setPantallaActual] = useState('dashboard')
   const [parametrosNavegacion, setParametrosNavegacion] = useState(null)
+
+  const clearSession = useCallback(() => {
+    localStorage.removeItem('access_token')
+    setSession(null)
+  }, [])
+
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      clearSession()
+    }
+
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired)
+
+    return () => {
+      window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired)
+    }
+  }, [clearSession])
 
   // Restaurar la sesión al cargar la app de forma real
   useEffect(() => {
@@ -31,7 +48,7 @@ function App() {
         const response = await meRequest(token)
         setSession({ accessToken: token, user: response.user || response.data || response })
       } catch {
-        localStorage.removeItem('access_token')
+        clearSession()
       } finally {
         setBooting(false)
       }
@@ -53,8 +70,7 @@ function App() {
     } catch {
       // Limpieza local preventiva si falla el servidor
     } finally {
-      localStorage.removeItem('access_token')
-      setSession(null)
+      clearSession()
     }
   }
 
