@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   getFamiliasRequest,
   createFamiliaRequest,
@@ -7,8 +7,114 @@ import {
   createIntegranteRequest,
   getFichaFamiliaRequest,
   deleteFamiliaRequest,
+  updateFamiliaRequest,
+  updateIntegranteRequest,
 } from '../../config/api.js';
 import './familias.css';
+
+function normalizarTextoClave(valor) {
+  return (valor || '').toString().toLowerCase().trim().replace(/[\s-]+/g, '_');
+}
+
+function normalizarEstadoLista(valor) {
+  return (valor || '').toString().toUpperCase().trim();
+}
+
+function formatearFechaInput(valor) {
+  if (!valor) return '';
+  const texto = valor.toString().trim();
+  if (!texto) return '';
+  return texto.includes('T') ? texto.split('T')[0] : texto.slice(0, 10);
+}
+
+function formatearFechaLegible(valor) {
+  if (!valor) return '[N/D]';
+
+  const texto = valor.toString().trim();
+  if (!texto) return '[N/D]';
+
+  const fechaBase = texto.includes('T') ? texto.split('T')[0] : texto.slice(0, 10);
+  const partes = fechaBase.split('-');
+  if (partes.length !== 3) return texto;
+
+  return `${partes[2]}/${partes[1]}/${partes[0]}`;
+}
+
+function normalizarListaIntegrantes(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.integrantes)) return payload.integrantes;
+  if (Array.isArray(payload?.members)) return payload.members;
+  return [];
+}
+
+function calcularCategoriaEtaria(fechaNacimiento) {
+  if (!fechaNacimiento) return 'MENOR';
+
+  const fecha = new Date(fechaNacimiento);
+  if (Number.isNaN(fecha.getTime())) return 'MENOR';
+
+  const hoy = new Date();
+  let edad = hoy.getFullYear() - fecha.getFullYear();
+  const mes = hoy.getMonth() - fecha.getMonth();
+
+  if (mes < 0 || (mes === 0 && hoy.getDate() < fecha.getDate())) {
+    edad -= 1;
+  }
+
+  return edad >= 18 ? 'ADULTO' : 'MENOR';
+}
+
+function formatearNombreIntegrante(integrante) {
+  const apellido = integrante?.apellido || integrante?.last_name || '';
+  const nombre = integrante?.nombre || integrante?.name || '';
+
+  if (apellido && nombre) return `${apellido}, ${nombre}`;
+  return apellido || nombre || `Integrante #${integrante?.id_integrante ?? integrante?.id ?? ''}`;
+}
+
+function esIntegranteReferente(integrante, referenteId) {
+  if (!integrante || referenteId === null || referenteId === undefined) return false;
+
+  const integranteId = integrante.id_integrante ?? integrante.id;
+  return String(integranteId) === String(referenteId);
+}
+
+function getCategoriaBadgeClass(categoria) {
+  const normalizada = normalizarTextoClave(categoria);
+  if (normalizada === 'adulto') return 'badge-success';
+  if (normalizada === 'menor') return 'badge-primary';
+  return 'badge-warning';
+}
+
+function getCategoriaLabel(categoria) {
+  const normalizada = normalizarTextoClave(categoria);
+  const mapa = {
+    adulto: 'Adulto',
+    menor: 'Menor',
+  };
+
+  return mapa[normalizada] || (categoria ? categoria.toString().replace(/_/g, ' ') : 'Sin dato');
+}
+
+function getEstadoListaBadgeClass(estado) {
+  const normalizado = normalizarEstadoLista(estado);
+  if (normalizado === 'PRINCIPAL') return 'badge-success';
+  if (normalizado === 'ESPERA') return 'badge-primary';
+  if (normalizado === 'INACTIVA') return 'badge-danger';
+  return 'badge-primary';
+}
+
+function getEstadoListaLabel(estado) {
+  const normalizado = normalizarEstadoLista(estado);
+  const mapa = {
+    PRINCIPAL: 'Principal',
+    ESPERA: 'Espera',
+    INACTIVA: 'Inactiva',
+  };
+
+  return mapa[normalizado] || (estado ? estado.toString() : 'Sin dato');
+}
 
 function Familias({ onNavegar }) {
   // Estados de datos reales (Grilla Principal)
@@ -49,7 +155,22 @@ function Familias({ onNavegar }) {
   const [fichaData, setFichaData] = useState(null);
   const [loadingFicha, setLoadingFicha] = useState(false);
   const [fichaError, setFichaError] = useState(null);
+  const [integrantesFicha, setIntegrantesFicha] = useState([]);
+  const [integrantesFichaError, setIntegrantesFichaError] = useState(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Estados del modal de Edición de Familia
+  const [showEditarFamiliaModal, setShowEditarFamiliaModal] = useState(false);
+  const [editFamiliaData, setEditFamiliaData] = useState(null);
+  const [savingFamiliaEdit, setSavingFamiliaEdit] = useState(false);
+  const [editFamiliaError, setEditFamiliaError] = useState(null);
+
+  // Estados del modal de Edición de Integrante
+  const [showEditarIntegranteModal, setShowEditarIntegranteModal] = useState(false);
+  const [editIntegranteId, setEditIntegranteId] = useState(null);
+  const [editIntegranteData, setEditIntegranteData] = useState(null);
+  const [savingIntegranteEdit, setSavingIntegranteEdit] = useState(false);
+  const [editIntegranteError, setEditIntegranteError] = useState(null);
 
   // Estados del submodal de Añadir Integrante
   const [showIntegranteModal, setShowIntegranteModal] = useState(false);
@@ -134,7 +255,11 @@ function Familias({ onNavegar }) {
   }, [searchTerm, priorityFilter, evaluadaFilter, sortByFilter]);
 
   useEffect(() => {
-    cargarFamilias();
+    const timerId = window.setTimeout(() => {
+      cargarFamilias();
+    }, 0);
+
+    return () => window.clearTimeout(timerId);
   }, [cargarFamilias]);
 
   // ==========================================================================
@@ -160,31 +285,76 @@ function Familias({ onNavegar }) {
   // ==========================================================================
   // FLUJO DE CONTROL DE "VER FICHA"
   // ==========================================================================
+  const cerrarFichaModal = () => {
+    setShowFichaModal(false);
+    setFamiliaCreadaId(null);
+    setFichaData(null);
+    setIntegrantesFicha([]);
+    setFichaError(null);
+    setIntegrantesFichaError(null);
+    setLoadingFicha(false);
+    setDeleting(false);
+    setShowEditarFamiliaModal(false);
+    setEditFamiliaData(null);
+    setEditFamiliaError(null);
+    setSavingFamiliaEdit(false);
+    setShowEditarIntegranteModal(false);
+    setEditIntegranteId(null);
+    setEditIntegranteData(null);
+    setEditIntegranteError(null);
+    setSavingIntegranteEdit(false);
+    setShowIntegranteModal(false);
+    setShowReferenteModal(false);
+  };
+
+  const cargarFichaCompleta = useCallback(async (idFamilia) => {
+    if (!idFamilia) return;
+
+    setLoadingFicha(true);
+    setFichaError(null);
+    setIntegrantesFichaError(null);
+    setFichaData(null);
+    setIntegrantesFicha([]);
+
+    const [fichaResult, integrantesResult] = await Promise.allSettled([
+      getFichaFamiliaRequest(idFamilia),
+      getIntegrantesRequest(idFamilia),
+    ]);
+
+    if (fichaResult.status === 'fulfilled') {
+      setFichaData(fichaResult.value);
+    } else {
+      setFichaError(fichaResult.reason?.message || 'Error al cargar los detalles de la ficha.');
+    }
+
+    if (integrantesResult.status === 'fulfilled') {
+      setIntegrantesFicha(normalizarListaIntegrantes(integrantesResult.value));
+    } else {
+      setIntegrantesFichaError(integrantesResult.reason?.message || 'Error al cargar los integrantes de la familia.');
+    }
+
+    setLoadingFicha(false);
+  }, []);
+
   const handleAbrirFicha = async (idFamilia) => {
     setFamiliaCreadaId(idFamilia);
     setShowFichaModal(true);
-    setLoadingFicha(true);
-    setFichaError(null);
-    setFichaData(null);
+    setShowEditarFamiliaModal(false);
+    setShowEditarIntegranteModal(false);
+    setShowIntegranteModal(false);
+    setShowReferenteModal(false);
+    setEditFamiliaData(null);
+    setEditFamiliaError(null);
+    setEditIntegranteId(null);
+    setEditIntegranteData(null);
+    setEditIntegranteError(null);
 
-    try {
-      const data = await getFichaFamiliaRequest(idFamilia);
-      setFichaData(data);
-    } catch (err) {
-      setFichaError(err.message || 'Error al cargar los detalles de la ficha.');
-    } finally {
-      setLoadingFicha(false);
-    }
+    await cargarFichaCompleta(idFamilia);
   };
 
   const refrescarFichaEnCaliente = async () => {
     if (!familiaCreadaId) return;
-    try {
-      const data = await getFichaFamiliaRequest(familiaCreadaId);
-      setFichaData(data);
-    } catch (err) {
-      console.error('Error refrescando ficha técnica:', err);
-    }
+    await cargarFichaCompleta(familiaCreadaId);
   };
 
   // ==========================================================================
@@ -201,9 +371,7 @@ function Familias({ onNavegar }) {
 
     try {
       await deleteFamiliaRequest(familiaCreadaId);
-      setShowFichaModal(false);
-      setFamiliaCreadaId(null);
-      setFichaData(null);
+      cerrarFichaModal();
       cargarFamilias();
     } catch (err) {
       setFichaError(err.message || 'Error del servidor al intentar eliminar la familia.');
@@ -305,22 +473,7 @@ function Familias({ onNavegar }) {
     setIntegranteError(null);
     setIntegranteSuccess(null);
 
-    // 🚨 FIX CRÍTICO: Cálculo riguroso de la categoría etaria basada en la fecha de nacimiento
-    let categoriaEtaria = 'MENOR';
-    if (integranteData.fecha_nacimiento) {
-      const fechaNac = new Date(integranteData.fecha_nacimiento);
-      const hoy = new Date();
-      let edad = hoy.getFullYear() - fechaNac.getFullYear();
-      const mes = hoy.getMonth() - fechaNac.getMonth();
-      
-      if (mes < 0 || (mes === 0 && hoy.getDate() < fechaNac.getDate())) {
-        edad--;
-      }
-      
-      if (edad >= 18) {
-        categoriaEtaria = 'ADULTO';
-      }
-    }
+    const categoriaEtaria = calcularCategoriaEtaria(integranteData.fecha_nacimiento);
 
     const payload = {
       name: integranteData.nombre,
@@ -360,6 +513,147 @@ function Familias({ onNavegar }) {
   };
 
   // ==========================================================================
+  // FLUJO DE EDICIÓN DE FAMILIA E INTEGRANTE
+  // ==========================================================================
+  const handleAbrirEditarFamilia = () => {
+    if (!fichaData) return;
+
+    setEditFamiliaData({
+      direccion: fichaData.direccion || '',
+      telefono: fichaData.telefono || '',
+      puntaje_prioridad: fichaData.puntaje_prioridad ?? '',
+      prioridad_social: normalizarTextoClave(fichaData.prioridad_social),
+      estado_lista: normalizarEstadoLista(fichaData.estado_lista) || 'PRINCIPAL',
+      fecha_ingreso: formatearFechaInput(fichaData.fecha_ingreso || fichaData.created_at),
+      activa: fichaData.activa === true || fichaData.activa === 1 || fichaData.activa === '1',
+    });
+    setEditFamiliaError(null);
+    setShowIntegranteModal(false);
+    setShowReferenteModal(false);
+    setShowEditarIntegranteModal(false);
+    setEditIntegranteId(null);
+    setEditIntegranteData(null);
+    setEditIntegranteError(null);
+    setShowEditarFamiliaModal(true);
+  };
+
+  const handleEditarFamiliaInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setEditFamiliaData((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  const handleGuardarFamiliaEdicion = async (e) => {
+    e.preventDefault();
+    if (!familiaCreadaId || !editFamiliaData) return;
+
+    setSavingFamiliaEdit(true);
+    setEditFamiliaError(null);
+
+    try {
+      const payload = {
+        direccion: editFamiliaData.direccion.trim(),
+        telefono: editFamiliaData.telefono.trim(),
+        puntaje_prioridad: parseInt(editFamiliaData.puntaje_prioridad, 10) || 0,
+        prioridad_social: normalizarTextoClave(editFamiliaData.prioridad_social),
+        estado_lista: normalizarEstadoLista(editFamiliaData.estado_lista),
+        fecha_ingreso: editFamiliaData.fecha_ingreso,
+        activa: editFamiliaData.activa ? 1 : 0,
+      };
+
+      await updateFamiliaRequest(familiaCreadaId, payload);
+      setShowEditarFamiliaModal(false);
+      setEditFamiliaData(null);
+      await cargarFamilias();
+      await refrescarFichaEnCaliente();
+    } catch (err) {
+      setEditFamiliaError(err.message || 'No se pudo guardar la familia.');
+    } finally {
+      setSavingFamiliaEdit(false);
+    }
+  };
+
+  const handleCerrarEditarFamilia = () => {
+    setShowEditarFamiliaModal(false);
+    setEditFamiliaData(null);
+    setEditFamiliaError(null);
+  };
+
+  const handleAbrirEditarIntegrante = (integrante) => {
+    if (!integrante) return;
+
+    const integranteId = integrante.id_integrante ?? integrante.id;
+    const referenteId = fichaData?.referente?.id_integrante ?? fichaData?.referente?.id ?? null;
+
+    setEditIntegranteId(integranteId);
+    setEditIntegranteData({
+      nombre: integrante.nombre || integrante.name || '',
+      apellido: integrante.apellido || '',
+      fecha_nacimiento: formatearFechaInput(integrante.fecha_nacimiento),
+      tipo_documento: (integrante.tipo_documento || 'DNI').toString().toUpperCase(),
+      numero_documento: integrante.numero_documento || '',
+      es_referente: esIntegranteReferente(integrante, referenteId),
+    });
+    setEditIntegranteError(null);
+    setShowEditarFamiliaModal(false);
+    setShowIntegranteModal(false);
+    setShowReferenteModal(false);
+    setShowEditarIntegranteModal(true);
+  };
+
+  const handleEditarIntegranteInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditIntegranteData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleGuardarIntegranteEdicion = async (e) => {
+    e.preventDefault();
+    if (!editIntegranteId || !editIntegranteData || !familiaCreadaId) return;
+
+    setSavingIntegranteEdit(true);
+    setEditIntegranteError(null);
+
+    try {
+      const categoriaEtaria = calcularCategoriaEtaria(editIntegranteData.fecha_nacimiento);
+      const payload = {
+        name: editIntegranteData.nombre,
+        nombre: editIntegranteData.nombre,
+        apellido: editIntegranteData.apellido,
+        fecha_nacimiento: editIntegranteData.fecha_nacimiento,
+        tipo_documento: editIntegranteData.tipo_documento.toUpperCase(),
+        numero_documento: editIntegranteData.numero_documento,
+        referente: editIntegranteData.es_referente ? 1 : 0,
+        familia_id: parseInt(familiaCreadaId, 10),
+        id_familia: parseInt(familiaCreadaId, 10),
+        categoria_etaria: categoriaEtaria,
+      };
+
+      await updateIntegranteRequest(editIntegranteId, payload);
+      setShowEditarIntegranteModal(false);
+      setEditIntegranteId(null);
+      setEditIntegranteData(null);
+      await cargarFamilias();
+      await refrescarFichaEnCaliente();
+    } catch (err) {
+      setEditIntegranteError(err.message || 'No se pudo guardar el integrante.');
+    } finally {
+      setSavingIntegranteEdit(false);
+    }
+  };
+
+  const handleCerrarEditarIntegrante = () => {
+    setShowEditarIntegranteModal(false);
+    setEditIntegranteId(null);
+    setEditIntegranteData(null);
+    setEditIntegranteError(null);
+  };
+
+  // ==========================================================================
   // FLUJO DEL SUBMODAL DE REFERENTE
   // ==========================================================================
   const handleAbrirReferente = async () => {
@@ -373,8 +667,8 @@ function Familias({ onNavegar }) {
 
     try {
       const data = await getIntegrantesRequest(familiaCreadaId);
-      const adultos = (data || []).filter(
-        (integrante) => integrante.categoria_etaria === 'ADULTO'
+      const adultos = normalizarListaIntegrantes(data).filter(
+        (integrante) => (integrante.categoria_etaria || '').toString().toUpperCase() === 'ADULTO'
       );
       setIntegrantes(adultos);
     } catch (err) {
@@ -423,7 +717,7 @@ function Familias({ onNavegar }) {
 
   // Helpers visuales
   const getBadgeClass = (prioridad) => {
-    const p = prioridad ? prioridad.toLowerCase().replace('-', '_') : '';
+    const p = normalizarTextoClave(prioridad);
     const mapa = {
       'muy_alta': 'badge-danger',
       'alta': 'badge-warning',
@@ -435,7 +729,7 @@ function Familias({ onNavegar }) {
   };
 
   const getPrioridadLabel = (prioridad) => {
-    const p = prioridad ? prioridad.toLowerCase().replace('-', '_') : '';
+    const p = normalizarTextoClave(prioridad);
     const mapa = {
       'muy_alta': 'Muy Alta',
       'alta': 'Alta',
@@ -445,6 +739,20 @@ function Familias({ onNavegar }) {
     };
     return mapa[p] || prioridad;
   };
+
+  const integrantesFichaVisibles = useMemo(() => {
+    const referenteId = fichaData?.referente?.id_integrante ?? fichaData?.referente?.id ?? null;
+    const listaBase = normalizarListaIntegrantes(integrantesFicha);
+    const listaFallback = listaBase.length > 0 ? listaBase : normalizarListaIntegrantes(fichaData);
+
+    return [...listaFallback].sort((a, b) => {
+      const esReferenteA = esIntegranteReferente(a, referenteId);
+      const esReferenteB = esIntegranteReferente(b, referenteId);
+
+      if (esReferenteA === esReferenteB) return 0;
+      return esReferenteA ? -1 : 1;
+    });
+  }, [integrantesFicha, fichaData]);
 
   return (
     <div>
@@ -532,12 +840,10 @@ function Familias({ onNavegar }) {
               <header className="card-family-header">
                 <div>
                   <h2 className="family-name">
-                    {family.referente
-                      ? `${family.referente.apellido}${family.referente.nombre ? ', ' + family.referente.nombre : ''}`
-                      : `Familia #${family.id_familia}`}
+                    {family.referente ? formatearNombreIntegrante(family.referente) : `Familia #${family.id_familia}`}
                   </h2>
                   <p className="referent-info">
-                    Ref: {family.referente ? `${family.referente.nombre} ${family.referente.apellido}` : '[Sin referente]'}
+                    Ref: {family.referente ? formatearNombreIntegrante(family.referente) : '[Sin referente]'}
                     &nbsp;&bull;&nbsp;
                     DNI {family.referente ? family.referente.numero_documento : '[N/D]'}
                   </p>
@@ -550,7 +856,7 @@ function Familias({ onNavegar }) {
                 <div className="metric-mini">🏠 <span>{family.direccion || '[Sin dirección]'}</span></div>
                 <div className="metric-mini">📞 <span>{family.telefono || '[Sin teléfono]'}</span></div>
                 <div className="metric-mini">
-                  📋 <span>Estado: {family.estado_lista === 'PRINCIPAL' ? 'Activo' : 'En Espera'}</span>
+                  📋 <span>Estado: {getEstadoListaLabel(family.estado_lista)}</span>
                 </div>
               </div>
               <footer className="card-family-footer">
@@ -589,8 +895,8 @@ function Familias({ onNavegar }) {
           MODAL: VER FICHA EXTENDIDA DE FAMILIA
           ========================================================================== */}
       {showFichaModal && (
-        <div className="modal-overlay" onClick={() => { if (!deleting) { setShowFichaModal(false); setFamiliaCreadaId(null); } }}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '650px' }}>
+        <div className="modal-overlay" onClick={() => { if (!deleting) cerrarFichaModal(); }}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '920px' }}>
             <div className="modal-header">
               <h3>📋 Ficha Técnica de Familia {fichaData && `#${fichaData.id_familia}`}</h3>
             </div>
@@ -600,21 +906,21 @@ function Familias({ onNavegar }) {
               {fichaError && <div className="login-error">{fichaError}</div>}
 
               {fichaData && (
-                <div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)', marginBottom: 'var(--space-md)', borderBottom: '1px solid #e2e8f0', paddingBottom: 'var(--space-sm)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)', borderBottom: '1px solid #e2e8f0', paddingBottom: 'var(--space-sm)' }}>
                     <div><strong>Dirección:</strong> {fichaData.direccion || '[N/D]'}</div>
                     <div><strong>Teléfono:</strong> {fichaData.telefono || '[N/D]'}</div>
-                    <div><strong>Fecha Ingreso:</strong> {new Date(fichaData.fecha_ingreso).toLocaleDateString('es-AR')}</div>
+                    <div><strong>Fecha Ingreso:</strong> {formatearFechaLegible(fichaData.fecha_ingreso || fichaData.created_at)}</div>
                     <div>
-                      <strong>Estado:</strong> <span className={`badge ${fichaData.estado_lista === 'PRINCIPAL' ? 'badge-success' : 'badge-primary'}`}>{fichaData.estado_lista}</span>
+                      <strong>Estado:</strong> <span className={`badge ${getEstadoListaBadgeClass(fichaData.estado_lista)}`}>{getEstadoListaLabel(fichaData.estado_lista)}</span>
                     </div>
                   </div>
 
-                  <div style={{ backgroundColor: '#f7fafc', padding: 'var(--space-sm)', borderRadius: '6px', marginBottom: 'var(--space-md)' }}>
+                  <div style={{ backgroundColor: '#f7fafc', padding: 'var(--space-sm)', borderRadius: '6px' }}>
                     <h4 style={{ margin: '0 0 var(--space-xs) 0', fontSize: '1rem', color: 'var(--color-primary)' }}>👑 Referente Designado</h4>
                     {fichaData.referente ? (
                       <p style={{ margin: 0 }}>
-                        {fichaData.referente.apellido}, {fichaData.referente.nombre} &bull; <strong>{fichaData.referente.tipo_documento}:</strong> {fichaData.referente.numero_documento}
+                        {formatearNombreIntegrante(fichaData.referente)} &bull; <strong>{fichaData.referente.tipo_documento}:</strong> {fichaData.referente.numero_documento}
                       </p>
                     ) : (
                       <p style={{ margin: 0, color: '#e53e3e', fontWeight: 500 }}>⚠️ Sin referente asignado en el sistema.</p>
@@ -653,6 +959,88 @@ function Familias({ onNavegar }) {
                     </div>
                   </div>
 
+                  <section className="family-integrantes-section">
+                    <div className="section-heading">
+                      <div>
+                        <h4>👥 Integrantes de la familia</h4>
+                        <p>Editá cada miembro desde esta ficha.</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-table-action"
+                        onClick={() => setShowIntegranteModal(true)}
+                        disabled={loadingFicha || deleting}
+                      >
+                        ➕ Añadir integrante
+                      </button>
+                    </div>
+
+                    {integrantesFichaError && <div className="login-error">{integrantesFichaError}</div>}
+
+                    {!integrantesFichaError && integrantesFichaVisibles.length === 0 && !loadingFicha && (
+                      <div className="integrante-empty-state">
+                        No hay integrantes cargados para esta familia.
+                      </div>
+                    )}
+
+                    {integrantesFichaVisibles.length > 0 && (
+                      <div className="integrantes-grid">
+                        {integrantesFichaVisibles.map((integrante) => {
+                          const integranteId = integrante.id_integrante ?? integrante.id;
+                          const referenteId = fichaData.referente?.id_integrante ?? fichaData.referente?.id ?? null;
+                          const esReferente = esIntegranteReferente(integrante, referenteId);
+
+                          return (
+                            <article className="integrante-card" key={integranteId}>
+                              <div className="integrante-card-header">
+                                <div>
+                                  <h5>{formatearNombreIntegrante(integrante)}</h5>
+                                  <p>{integrante.tipo_documento || 'DNI'} {integrante.numero_documento || '[N/D]'}</p>
+                                </div>
+                                <div className="integrante-badges">
+                                  {esReferente && <span className="badge badge-success">Referente</span>}
+                                  <span className={`badge ${getCategoriaBadgeClass(integrante.categoria_etaria)}`}>
+                                    {getCategoriaLabel(integrante.categoria_etaria)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="integrante-meta-grid">
+                                <div className="integrante-meta">
+                                  <span>Fecha Nac.</span>
+                                  <strong>{formatearFechaLegible(integrante.fecha_nacimiento)}</strong>
+                                </div>
+                                <div className="integrante-meta">
+                                  <span>Documento</span>
+                                  <strong>{integrante.tipo_documento || 'DNI'} {integrante.numero_documento || '[N/D]'}</strong>
+                                </div>
+                                <div className="integrante-meta">
+                                  <span>Categoría</span>
+                                  <strong>{getCategoriaLabel(integrante.categoria_etaria)}</strong>
+                                </div>
+                                <div className="integrante-meta">
+                                  <span>Rol</span>
+                                  <strong>{esReferente ? 'Referente' : 'Integrante'}</strong>
+                                </div>
+                              </div>
+
+                              <div className="integrante-card-actions">
+                                <button
+                                  type="button"
+                                  className="btn-table-action"
+                                  onClick={() => handleAbrirEditarIntegrante(integrante)}
+                                  disabled={savingIntegranteEdit || savingFamiliaEdit}
+                                >
+                                  ✏️ Editar integrante
+                                </button>
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </section>
+
                   <div style={{ fontSize: '0.8rem', color: '#718096', borderTop: '1px solid #e2e8f0', paddingTop: 'var(--space-xs)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-xs)' }}>
                     <div><strong>Registrado por:</strong> {fichaData.registrado_por?.nombre} {fichaData.registrado_por?.apellido}</div>
                     <div><strong>Evaluado por:</strong> {fichaData.evaluado_por ? `${fichaData.evaluado_por.nombre} ${fichaData.evaluado_por.apellido}` : 'Pendiente'}</div>
@@ -671,16 +1059,6 @@ function Familias({ onNavegar }) {
               >
                 {deleting ? 'Eliminando...' : '🗑️ Eliminar Familia'}
               </button>
-
-              <button
-                type="button"
-                className="btn-primary"
-                style={{ backgroundColor: '#4a5568', padding: '0 1rem', minHeight: '40px', marginLeft: 'auto' }}
-                onClick={() => setShowIntegranteModal(true)}
-                disabled={loadingFicha || deleting}
-              >
-                👥 Añadir Integrante
-              </button>
               <button
                 type="button"
                 className="btn-primary"
@@ -692,9 +1070,18 @@ function Familias({ onNavegar }) {
               </button>
               <button
                 type="button"
+                className="btn-table-action"
+                style={{ minHeight: '40px', padding: '0 1rem' }}
+                onClick={handleAbrirEditarFamilia}
+                disabled={loadingFicha || deleting}
+              >
+                ✏️ Editar Familia
+              </button>
+              <button
+                type="button"
                 className="btn-table-action action-secondary"
                 style={{ minHeight: '40px' }}
-                onClick={() => { setShowFichaModal(false); setFamiliaCreadaId(null); }}
+                onClick={cerrarFichaModal}
                 disabled={deleting}
               >
                 Cerrar
@@ -1018,7 +1405,7 @@ function Familias({ onNavegar }) {
                     <option value="">Seleccionar integrante...</option>
                     {integrantes.map((integrante) => (
                       <option key={integrante.id_integrante} value={integrante.id_integrante}>
-                        {integrante.apellido}, {integrante.nombre} — DNI {integrante.numero_documento}
+                        {formatearNombreIntegrante(integrante)} — DNI {integrante.numero_documento}
                       </option>
                     ))}
                   </select>
@@ -1045,6 +1432,241 @@ function Familias({ onNavegar }) {
                 {asignandoReferente ? 'Asignando...' : 'Asignar Referente'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================================================
+          MODAL: EDITAR FAMILIA
+          ========================================================================== */}
+      {showEditarFamiliaModal && editFamiliaData && (
+        <div className="modal-overlay" onClick={handleCerrarEditarFamilia}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '720px' }}>
+            <div className="modal-header">
+              <h3>✏️ Editar Familia {fichaData && `#${fichaData.id_familia}`}</h3>
+            </div>
+
+            <form onSubmit={handleGuardarFamiliaEdicion}>
+              <div className="modal-body">
+                <p className="edit-form-note">Los cambios se guardan sobre la ficha y se reflejan en la grilla principal.</p>
+                {editFamiliaError && <div className="login-error" style={{ marginBottom: 'var(--space-md)' }}>{editFamiliaError}</div>}
+
+                <div className="form-group">
+                  <label htmlFor="edit-direccion">Dirección</label>
+                  <input
+                    id="edit-direccion"
+                    name="direccion"
+                    type="text"
+                    value={editFamiliaData.direccion}
+                    onChange={handleEditarFamiliaInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="edit-telefono">Teléfono</label>
+                  <input
+                    id="edit-telefono"
+                    name="telefono"
+                    type="text"
+                    value={editFamiliaData.telefono}
+                    onChange={handleEditarFamiliaInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-grid-3">
+                  <div className="form-group">
+                    <label htmlFor="edit-puntaje_prioridad">Puntaje Prioridad</label>
+                    <input
+                      id="edit-puntaje_prioridad"
+                      name="puntaje_prioridad"
+                      type="number"
+                      min="0"
+                      max="20"
+                      value={editFamiliaData.puntaje_prioridad}
+                      onChange={handleEditarFamiliaInputChange}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="edit-prioridad_social">Prioridad Social</label>
+                    <select
+                      id="edit-prioridad_social"
+                      name="prioridad_social"
+                      value={editFamiliaData.prioridad_social}
+                      onChange={handleEditarFamiliaInputChange}
+                      required
+                    >
+                      <option value="muy_alta">Muy Alta</option>
+                      <option value="alta">Alta</option>
+                      <option value="media">Media</option>
+                      <option value="baja">Baja</option>
+                      <option value="muy_baja">Muy Baja</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="edit-estado_lista">Estado Lista</label>
+                    <select
+                      id="edit-estado_lista"
+                      name="estado_lista"
+                      value={editFamiliaData.estado_lista}
+                      onChange={handleEditarFamiliaInputChange}
+                      required
+                    >
+                      <option value="PRINCIPAL">Principal</option>
+                      <option value="ESPERA">Espera</option>
+                      <option value="INACTIVA">Inactiva</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="edit-fecha_ingreso">Fecha de Ingreso</label>
+                  <input
+                    id="edit-fecha_ingreso"
+                    name="fecha_ingreso"
+                    type="date"
+                    value={editFamiliaData.fecha_ingreso}
+                    onChange={handleEditarFamiliaInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="family-edit-switch" htmlFor="edit-activa">
+                    <input
+                      id="edit-activa"
+                      name="activa"
+                      type="checkbox"
+                      checked={Boolean(editFamiliaData.activa)}
+                      onChange={handleEditarFamiliaInputChange}
+                    />
+                    Familia Activa
+                  </label>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn-table-action action-secondary"
+                  onClick={handleCerrarEditarFamilia}
+                  disabled={savingFamiliaEdit}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="btn-primary" disabled={savingFamiliaEdit}>
+                  {savingFamiliaEdit ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================================================
+          MODAL: EDITAR INTEGRANTE
+          ========================================================================== */}
+      {showEditarIntegranteModal && editIntegranteData && (
+        <div className="modal-overlay" onClick={handleCerrarEditarIntegrante}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+            <div className="modal-header">
+              <h3>✏️ Editar Integrante {editIntegranteId ? `#${editIntegranteId}` : ''}</h3>
+            </div>
+
+            <form onSubmit={handleGuardarIntegranteEdicion}>
+              <div className="modal-body">
+                <p className="edit-form-note">El referente se administra desde el botón de referente. Acá solo actualizás los datos personales.</p>
+                {editIntegranteError && <div className="login-error" style={{ marginBottom: 'var(--space-md)' }}>{editIntegranteError}</div>}
+
+                <div className="form-group">
+                  <label htmlFor="edit-nombre">Nombre</label>
+                  <input
+                    id="edit-nombre"
+                    name="nombre"
+                    type="text"
+                    value={editIntegranteData.nombre}
+                    onChange={handleEditarIntegranteInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="edit-apellido">Apellido</label>
+                  <input
+                    id="edit-apellido"
+                    name="apellido"
+                    type="text"
+                    value={editIntegranteData.apellido}
+                    onChange={handleEditarIntegranteInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="edit-fecha_nacimiento">Fecha de Nacimiento</label>
+                  <input
+                    id="edit-fecha_nacimiento"
+                    name="fecha_nacimiento"
+                    type="date"
+                    value={editIntegranteData.fecha_nacimiento}
+                    onChange={handleEditarIntegranteInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 'var(--space-sm)' }}>
+                  <div className="form-group">
+                    <label htmlFor="edit-tipo_documento">Tipo Doc.</label>
+                    <select
+                      id="edit-tipo_documento"
+                      name="tipo_documento"
+                      value={editIntegranteData.tipo_documento}
+                      onChange={handleEditarIntegranteInputChange}
+                      required
+                    >
+                      <option value="DNI">DNI</option>
+                      <option value="LC">LC</option>
+                      <option value="LE">LE</option>
+                      <option value="PASAPORTE">Pasaporte</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="edit-numero_documento">Número Documento</label>
+                    <input
+                      id="edit-numero_documento"
+                      name="numero_documento"
+                      type="text"
+                      value={editIntegranteData.numero_documento}
+                      onChange={handleEditarIntegranteInputChange}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 'var(--space-sm)', fontSize: 'var(--text-sm)', color: '#718096' }}>
+                  Rol actual: <strong>{editIntegranteData.es_referente ? 'Referente' : 'Integrante'}</strong>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn-table-action action-secondary"
+                  onClick={handleCerrarEditarIntegrante}
+                  disabled={savingIntegranteEdit}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="btn-primary" disabled={savingIntegranteEdit}>
+                  {savingIntegranteEdit ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

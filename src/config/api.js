@@ -161,6 +161,26 @@ export async function createFamiliaRequest(payload) {
 }
 
 /**
+ * Actualiza los datos principales de una familia.
+ * @param {number|string} familiaId
+ * @param {Object} payload
+ */
+export async function updateFamiliaRequest(familiaId, payload) {
+  const token = localStorage.getItem('access_token');
+
+  return apiRequest(`/api/familias/${parseInt(familiaId, 10)}`, {
+    method: 'PUT',
+    redirect: 'manual',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
  * Obtiene los integrantes de una familia.
  * @param {number} familiaId
  * @returns {Promise<Array>} Lista de integrantes.
@@ -214,6 +234,26 @@ export async function createIntegranteRequest(payload) {
   return apiRequest('/api/integrantes', {
     method: 'POST',
     redirect: 'manual', // 🍏 Blindaje anti-CORS si Laravel mete redirección web post-POST
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * Actualiza un integrante existente.
+ * @param {number|string} integranteId
+ * @param {Object} payload
+ */
+export async function updateIntegranteRequest(integranteId, payload) {
+  const token = localStorage.getItem('access_token');
+
+  return apiRequest(`/api/integrantes/${parseInt(integranteId, 10)}`, {
+    method: 'PUT',
+    redirect: 'manual',
     headers: {
       'Authorization': `Bearer ${token}`,
       'Accept': 'application/json',
