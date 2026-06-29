@@ -20,7 +20,7 @@ function formatearFechaLegible(fechaISO) {
   return `${partes[2]}/${partes[1]}/${partes[0]}`;
 }
 
-function Listas({ onNavegar, parametros, session }) {
+function Listas() {
   const [tabActiva, setTabActiva] = useState('espera'); // 'espera' o 'principal'
   
   // Guardamos el padrón crudo que viene de la base de datos
@@ -28,8 +28,6 @@ function Listas({ onNavegar, parametros, session }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [mutandoId, setMutandoId] = useState(null);
-
-  const usuarioId = session?.user?.id_usuario || 1;
 
   // Descarga del padrón completo sin confiar en los filtros rotos del backend
   const descargarPadrones = useCallback(async () => {
@@ -47,7 +45,11 @@ function Listas({ onNavegar, parametros, session }) {
   }, []);
 
   useEffect(() => {
-    descargarPadrones();
+    const timerId = window.setTimeout(() => {
+      descargarPadrones();
+    }, 0);
+
+    return () => window.clearTimeout(timerId);
   }, [descargarPadrones]);
 
   // 🎯 FILTRADO SENIOR EN FRONTEND: Dividimos las listas de forma reactiva y exacta
@@ -78,7 +80,6 @@ function Listas({ onNavegar, parametros, session }) {
     try {
       await updateEstadoListaRequest(familiaId, {
         estado_lista: nuevoEstado,
-        registrado_por: usuarioId
       });
       
       // Actualización optimista local para que el cambio sea instantáneo en pantalla
