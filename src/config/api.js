@@ -23,14 +23,14 @@ export const SITUACION_ALIMENTARIA_OPTIONS = [
 ]
 
 export const FRECUENCIA_ASISTENCIA_OPTIONS = [
-  { value: 'ocasional', label: 'Ocacional' },
+  { value: 'ocasional', label: 'Ocasional' },
   { value: 'semanal', label: 'Semanal' },
   { value: 'mas_de_una_vez', label: 'Más de una vez' },
 ]
 
 export const PARTICIPACION_MERENDERO_OPTIONS = [
   { value: 'no_participa', label: 'No participa' },
-  { value: 'ocasional', label: 'Ocacional' },
+  { value: 'ocasional', label: 'Ocasional' },
   { value: 'activa', label: 'Activa' },
 ]
 
