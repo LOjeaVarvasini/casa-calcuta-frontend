@@ -7,6 +7,8 @@ import Comisiones from './pages/Comisiones/index.jsx'
 import Donaciones from './pages/Donaciones/index.jsx'
 // ⏳ Importamos la nueva vista modular de Listas
 import Listas from './pages/Listas/index.jsx'
+// 🛡️ Importamos la nueva vista de Administración
+import Administracion from './pages/Administracion/index.jsx'
 import Sidebar from './components/common/Sidebar.jsx'
 import BottomNav from './components/common/BottomNav.jsx'
 import { SESSION_EXPIRED_EVENT, logoutRequest, meRequest } from './config/api.js'
@@ -98,8 +100,8 @@ function App() {
   return (
     <div className="app-container">
       
-      {/* Componente de Navegación Lateral (Su clase interna .app-sidebar la oculta en móvil) */}
-      <Sidebar onNavegar={handleNavegar} pantallaActiva={pantallaActual} />
+      {/* Componente de Navegación Lateral (Pasamos user por si necesita filtrar por rol internamente) */}
+      <Sidebar onNavegar={handleNavegar} pantallaActiva={pantallaActual} usuario={session.user} />
 
       {/* Contenedor del Área de Contenido General */}
       <div className="app-content-area">
@@ -131,12 +133,14 @@ function App() {
           {pantallaActual === 'donaciones' && <Donaciones onNavegar={handleNavegar} />}
           {/* ⏳ Inyección de la nueva pantalla interactiva mapeada */}
           {pantallaActual === 'listas' && <Listas onNavegar={handleNavegar} parametros={parametrosNavegacion} />}
+          {/* 🛡️ Inyección de la pantalla de Administración */}
+          {pantallaActual === 'usuarios' && <Administracion onNavegar={handleNavegar} />}
         </main>
 
       </div>
 
-      {/* Componente de Navegación Inferior (Su clase interna .mobile-nav lo oculta en escritorio) */}
-      <BottomNav onNavegar={handleNavegar} pantallaActiva={pantallaActual} />
+      {/* Componente de Navegación Inferior */}
+      <BottomNav onNavegar={handleNavegar} pantallaActiva={pantallaActual} usuario={session.user} />
 
     </div>
   )

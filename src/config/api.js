@@ -683,4 +683,61 @@ export async function updateEstadoListaRequest(familiaId, payload) {
   })
 }
 
+// ==========================================================================
+// 🛡️ FUNCIONES DE GESTIÓN DE USUARIOS (ADMINISTRACIÓN) - AISLADAS
+// ==========================================================================
 
+export async function getUsuariosAdminRequest(queryParams = 'per_page=15') {
+  const token = localStorage.getItem('access_token')
+  const path = queryParams ? `/api/usuarios?${queryParams}` : '/api/usuarios'
+
+  return apiRequest(path, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+}
+
+export async function createUsuarioAdminRequest(payload) {
+  const token = localStorage.getItem('access_token')
+
+  return apiRequest('/api/usuarios', {
+    method: 'POST',
+    redirect: 'manual',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json' // 🍏 Forzado exclusivo aquí
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateUsuarioAdminRequest(usuarioId, payload) {
+  const token = localStorage.getItem('access_token')
+
+  return apiRequest(`/api/usuarios/${parseInt(usuarioId, 10)}`, {
+    method: 'PUT',
+    redirect: 'manual',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json' // 🍏 Forzado exclusivo aquí
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteUsuarioAdminRequest(usuarioId) {
+  const token = localStorage.getItem('access_token')
+
+  return apiRequest(`/api/usuarios/${parseInt(usuarioId, 10)}`, {
+    method: 'DELETE',
+    redirect: 'manual',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    },
+  })
+}
