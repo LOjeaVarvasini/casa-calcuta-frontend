@@ -25,7 +25,34 @@ function obtenerRegistroAsistenciaId(registro) {
   return registro?.id ?? registro?.id_registro ?? registro?.registro_asistencia_id ?? registro?.id_registro_asistencia ?? null;
 }
 
-function Asistencia({ parametros }) {
+function Asistencia({ parametros, usuario }) {
+  // 🛡️ CONTROL DE PERMISOS BASADO EN ROLES DEL BACKEND (mismo patrón que Familias.jsx)
+  const rolUsuario = usuario?.rol?.nombre;
+  const esAdministrador = rolUsuario === 'Administrador';
+  const esCoordinador = rolUsuario === 'Coordinador';
+  const esEncargado = rolUsuario === 'Encargado';
+
+  const permisosDelUsuario = usuario?.rol?.permisos || [];
+
+  const puedePonerAsistencia = esAdministrador || esCoordinador || esEncargado || permisosDelUsuario.some(p => {
+    const nombreNormalizado = (p.nombre || '').toString().toLowerCase().trim();
+    return nombreNormalizado === 'poner asistencia' || nombreNormalizado === 'poner_asistencia';
+  });
+
+  // Helper para inyectar estilos grises a botones deshabilitados por rol (idéntico a Familias.jsx)
+  const getEstiloBotonRestringido = (tienePermiso, estiloOriginal = {}) => {
+    if (tienePermiso) return estiloOriginal;
+    return {
+      ...estiloOriginal,
+      backgroundColor: '#cbd5e0',
+      borderColor: '#cbd5e0',
+      color: '#718096',
+      cursor: 'not-allowed',
+      opacity: 0.75,
+      boxShadow: 'none'
+    };
+  };
+
   const [fechaSeleccionada, setFechaSeleccionada] = useState(obtenerFechaHoyGMT3());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -304,11 +331,12 @@ function Asistencia({ parametros }) {
             </strong>
           </div>
         </div>
+        {/* 🛡️ BOTÓN: Guardar Planilla (Deshabilitado Dinámicamente por Permisos, sin tocar el disabled de carga) */}
         <button
           className="btn-primary"
-          onClick={handleGuardar}
+          onClick={puedePonerAsistencia ? handleGuardar : () => alert('No tienes permisos suficientes para registrar la asistencia.')}
           disabled={guardando || loading}
-          style={{ minHeight: '40px', marginTop: 'auto' }}
+          style={getEstiloBotonRestringido(puedePonerAsistencia, { minHeight: '40px', marginTop: 'auto' })}
         >
           {guardando ? '⏳ Guardando...' : '💾 Guardar Planilla'}
         </button>
@@ -399,16 +427,28 @@ function Asistencia({ parametros }) {
                       </div>
                     </td>
                     <td data-label="Control" style={{ textAlign: 'center' }}>
-                      <div className="switch-toggle-group">
+                      {/* 🛡️ RADIOS: Bloqueados visual y funcionalmente por permiso (sin usar disabled nativo) */}
+                      <div
+                        className="switch-toggle-group"
+                        style={!puedePonerAsistencia ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+                      >
                         <div className="switch-toggle-item">
                           <input
                             type="radio"
                             id={`f${family.id_familia}-retirado`}
                             name={`family-${family.id_familia}`}
                             checked={estadosFamilias[family.id_familia] === 'retirado'}
-                            onChange={() => setEstadosFamilias(prev => ({ ...prev, [family.id_familia]: 'retirado' }))}
+                            onChange={puedePonerAsistencia
+                              ? () => setEstadosFamilias(prev => ({ ...prev, [family.id_familia]: 'retirado' }))
+                              : () => alert('No tienes permisos suficientes para registrar la asistencia.')}
+                            style={!puedePonerAsistencia ? { cursor: 'not-allowed' } : undefined}
                           />
-                          <label htmlFor={`f${family.id_familia}-retirado`}>Retirado</label>
+                          <label
+                            htmlFor={`f${family.id_familia}-retirado`}
+                            style={!puedePonerAsistencia ? { cursor: 'not-allowed' } : undefined}
+                          >
+                            Retirado
+                          </label>
                         </div>
                         <div className="switch-toggle-item">
                           <input
@@ -416,12 +456,18 @@ function Asistencia({ parametros }) {
                             id={`f${family.id_familia}-falta`}
                             name={`family-${family.id_familia}`}
                             checked={estadosFamilias[family.id_familia] === 'falta'}
-                            onChange={() => setEstadosFamilias(prev => ({ ...prev, [family.id_familia]: 'falta' }))}
+                            onChange={puedePonerAsistencia
+                              ? () => setEstadosFamilias(prev => ({ ...prev, [family.id_familia]: 'falta' }))
+                              : () => alert('No tienes permisos suficientes para registrar la asistencia.')}
+                            style={!puedePonerAsistencia ? { cursor: 'not-allowed' } : undefined}
                           />
                           <label
                             htmlFor={`f${family.id_familia}-falta`}
                             className={estaAusente && faltasConsecutivas >= 2 ? 'pulse-warning' : ''}
-                            style={{ color: estaAusente && faltasConsecutivas >= 2 ? 'var(--color-danger)' : '#718096' }}
+                            style={{
+                              color: estaAusente && faltasConsecutivas >= 2 ? 'var(--color-danger)' : '#718096',
+                              cursor: !puedePonerAsistencia ? 'not-allowed' : undefined,
+                            }}
                           >
                             No Retiró
                           </label>

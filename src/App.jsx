@@ -139,7 +139,7 @@ function App() {
         <main className="main-content">
           {pantallaActual === 'dashboard' && <Dashboard onNavegar={handleNavegar} />}
           {pantallaActual === 'familias' && <Familias onNavegar={handleNavegar} usuario={session.user} />}
-          {pantallaActual === 'asistencia' && <Asistencia onNavigate={handleNavegar} parametros={parametrosNavegacion} />}
+          {pantallaActual === 'asistencia' && <Asistencia onNavigate={handleNavegar} parametros={parametrosNavegacion} usuario={session.user} />}
           {pantallaActual === 'comisiones' && <Comisiones onNavegar={handleNavegar} parametros={parametrosNavegacion} />}
           {pantallaActual === 'donaciones' && <Donaciones onNavegar={handleNavegar} />}
           
