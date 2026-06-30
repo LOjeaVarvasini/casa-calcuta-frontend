@@ -1,6 +1,11 @@
 import React from 'react';
 
-function Sidebar({ onNavegar, pantallaActiva }) {
+function Sidebar({ onNavegar, pantallaActiva, usuario }) {
+  // 🛡️ Extracción analítica de los permisos del objeto de sesión
+  const esAdministrador = usuario?.rol?.nombre === 'Administrador';
+  const permisosDelUsuario = usuario?.rol?.permisos || [];
+  const puedeVerListas = esAdministrador || permisosDelUsuario.some(p => p.nombre === "Gestionar listas");
+
   // Función constructora para el efecto pastilla invertida (Activo: Fondo Blanco / Texto Azul)
   const obtenerEstiloItem = (nombre) => {
     const esActivo = pantallaActiva === nombre;
@@ -42,15 +47,24 @@ function Sidebar({ onNavegar, pantallaActiva }) {
           <li onClick={() => onNavegar('asistencia')}>
             <span style={obtenerEstiloItem('asistencia')}><span>📋</span> Registrar Asistencia</span>
           </li>
-          <li onClick={() => onNavegar('listas')}>
-            <span style={obtenerEstiloItem('listas')}><span>⏳</span> Listas de Espera</span>
-          </li>
+          
+          {/* 🛡️ CONDICIONAL: Listas de Espera (Oculto para encargados, ayudantes y voluntarios) */}
+          {puedeVerListas && (
+            <li onClick={() => onNavegar('listas')}>
+              <span style={obtenerEstiloItem('listas')}><span>⏳</span> Listas de Espera</span>
+            </li>
+          )}
+          
           <li onClick={() => onNavegar('donaciones')}>
             <span style={obtenerEstiloItem('donaciones')}><span>📦</span> Donaciones</span>
           </li>
-          <li onClick={() => onNavegar('usuarios')}>
-            <span style={obtenerEstiloItem('usuarios')}><span>⚙️</span> Administración</span>
-          </li>
+          
+          {/* 🛡️ CONDICIONAL: Administración (Oculto para todos menos Admin) */}
+          {esAdministrador && (
+            <li onClick={() => onNavegar('usuarios')}>
+              <span style={obtenerEstiloItem('usuarios')}><span>⚙️</span> Administración</span>
+            </li>
+          )}
         </ul>
 
         {/* Botón de salida técnica */}
