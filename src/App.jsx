@@ -5,9 +5,7 @@ import Familias from './pages/Familias/index.jsx'
 import Asistencia from './pages/Asistencia/index.jsx'
 import Comisiones from './pages/Comisiones/index.jsx'
 import Donaciones from './pages/Donaciones/index.jsx'
-// ⏳ Importamos la nueva vista modular de Listas
 import Listas from './pages/Listas/index.jsx'
-// 🛡️ Importamos la nueva vista de Administración
 import Administracion from './pages/Administracion/index.jsx'
 import Sidebar from './components/common/Sidebar.jsx'
 import BottomNav from './components/common/BottomNav.jsx'
@@ -25,27 +23,18 @@ function App() {
   }, [])
 
   useEffect(() => {
-    const handleSessionExpired = () => {
-      clearSession()
-    }
-
+    const handleSessionExpired = () => clearSession()
     window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired)
-
-    return () => {
-      window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired)
-    }
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired)
   }, [clearSession])
 
-  // Restaurar la sesión al cargar la app de forma real
   useEffect(() => {
     const restoreSession = async () => {
       const token = localStorage.getItem('access_token')
-
       if (!token) {
         setBooting(false)
         return
       }
-
       try {
         const response = await meRequest(token)
         setSession({ accessToken: token, user: response.user || response.data || response })
@@ -55,7 +44,6 @@ function App() {
         setBooting(false)
       }
     }
-
     restoreSession()
   }, [])
 
@@ -66,9 +54,7 @@ function App() {
 
   const handleLogout = async () => {
     try {
-      if (session?.accessToken) {
-        await logoutRequest(session.accessToken)
-      }
+      if (session?.accessToken) await logoutRequest(session.accessToken)
     } catch {
       // Limpieza local preventiva si falla el servidor
     } finally {
@@ -97,16 +83,14 @@ function App() {
     return <Login onLoginSuccess={handleLogin} />
   }
 
+  // 🛡️ VARIABLE DE CONTROL DE ROL
+  const esAdministrador = session.user?.rol?.nombre === 'Administrador';
+
   return (
     <div className="app-container">
-      
-      {/* Componente de Navegación Lateral (Pasamos user por si necesita filtrar por rol internamente) */}
       <Sidebar onNavegar={handleNavegar} pantallaActiva={pantallaActual} usuario={session.user} />
 
-      {/* Contenedor del Área de Contenido General */}
       <div className="app-content-area">
-        
-        {/* Cabecera de la Aplicación */}
         <header className="app-header">
           <div className="header-title">
             <h1>
@@ -124,24 +108,26 @@ function App() {
           </div>
         </header>
 
-        {/* Visor Dinámico de Pantallas con Scroll Controlado */}
         <main className="main-content">
           {pantallaActual === 'dashboard' && <Dashboard onNavegar={handleNavegar} />}
           {pantallaActual === 'familias' && <Familias onNavegar={handleNavegar} />}
           {pantallaActual === 'asistencia' && <Asistencia onNavigate={handleNavegar} parametros={parametrosNavegacion} />}
           {pantallaActual === 'comisiones' && <Comisiones onNavegar={handleNavegar} parametros={parametrosNavegacion} />}
           {pantallaActual === 'donaciones' && <Donaciones onNavegar={handleNavegar} />}
-          {/* ⏳ Inyección de la nueva pantalla interactiva mapeada */}
           {pantallaActual === 'listas' && <Listas onNavegar={handleNavegar} parametros={parametrosNavegacion} />}
-          {/* 🛡️ Inyección de la pantalla de Administración */}
-          {pantallaActual === 'usuarios' && <Administracion onNavegar={handleNavegar} />}
+          
+          {/* 🛡️ RENDERIZADO PROTEGIDO: Solo renderiza si es Admin, sino muestra mensaje de error */}
+          {pantallaActual === 'usuarios' && esAdministrador && <Administracion onNavegar={handleNavegar} />}
+          {pantallaActual === 'usuarios' && !esAdministrador && (
+            <div style={{ padding: '2rem', textAlign: 'center', color: '#e53e3e' }}>
+              <h2>Acceso Denegado</h2>
+              <p>No tienes los permisos necesarios para ver esta sección.</p>
+            </div>
+          )}
         </main>
-
       </div>
 
-      {/* Componente de Navegación Inferior */}
       <BottomNav onNavegar={handleNavegar} pantallaActiva={pantallaActual} usuario={session.user} />
-
     </div>
   )
 }
