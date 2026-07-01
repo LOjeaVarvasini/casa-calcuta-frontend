@@ -124,7 +124,7 @@ function App() {
               {pantallaActual === 'dashboard' && 'Panel Principal'}
               {pantallaActual === 'familias' && 'Padrón Único de Familias'}
               {pantallaActual === 'asistencia' && 'Registro de Asistencia y Entrega'}
-              {pantallaActual === 'comisiones' && 'Gestión de Comisiones de Trabajo'}
+              {pantallaActual === 'comisiones' && (parametrosNavegacion?.familiaId ? 'Gestión de Comisiones de Trabajo' : 'Catálogo de Comisiones')}
               {pantallaActual === 'listas' && 'Listas de Espera'}
               {pantallaActual === 'donaciones' && 'Gestión de Donaciones'}
               {pantallaActual === 'usuarios' && 'Administración de Usuarios'}

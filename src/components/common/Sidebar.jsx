@@ -47,14 +47,17 @@ function Sidebar({ onNavegar, pantallaActiva, usuario }) {
           <li onClick={() => onNavegar('asistencia')}>
             <span style={obtenerEstiloItem('asistencia')}><span>📋</span> Registrar Asistencia</span>
           </li>
-          
+          <li onClick={() => onNavegar('comisiones')}>
+            <span style={obtenerEstiloItem('comisiones')}><span>🧾</span> Comisiones</span>
+          </li>
+
           {/* 🛡️ CONDICIONAL: Listas de Espera (Oculto para encargados, ayudantes y voluntarios) */}
           {puedeVerListas && (
             <li onClick={() => onNavegar('listas')}>
               <span style={obtenerEstiloItem('listas')}><span>⏳</span> Listas de Espera</span>
             </li>
           )}
-          
+
           <li onClick={() => onNavegar('donaciones')}>
             <span style={obtenerEstiloItem('donaciones')}><span>📦</span> Donaciones</span>
           </li>

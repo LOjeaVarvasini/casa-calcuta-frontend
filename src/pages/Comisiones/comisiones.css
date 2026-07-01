@@ -39,7 +39,14 @@
   margin-bottom: var(--space-md);
   background-color: #ebf8ff;
   border-color: #bee3f8;
-  flex-direction: row;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.comisiones-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
 }
 
 .comisiones-info-text {
@@ -55,9 +62,20 @@
   padding: var(--space-sm);
 }
 
+.comisiones-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  justify-content: flex-end;
+}
+
 .comisiones-search-input {
   height: 40px;
   font-size: var(--text-sm);
+}
+
+.comisiones-volver-btn {
+  min-height: 40px;
 }
 
 /* Estado de carga */
@@ -75,11 +93,347 @@
   color: #718096;
 }
 
+.comisiones-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-md);
+}
+
+.comision-card {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.2s ease;
+  overflow: hidden;
+}
+
+.comision-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card-comision-header {
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-xs);
+}
+
+.comision-name {
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.comision-ref-info {
+  font-size: var(--text-sm);
+  color: #718096;
+  margin-top: 2px;
+}
+
+.card-comision-body {
+  padding: var(--space-md);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  flex: 1;
+}
+
+.metric-mini {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: #4a5568;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.comision-description-box {
+  width: 100%;
+  background-color: #f7fafc;
+  border: 1px solid #edf2f7;
+  border-radius: var(--radius-sm);
+  padding: 8px;
+}
+
+.comision-description-box span {
+  display: block;
+  margin-bottom: 2px;
+  color: #718096;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.comision-description-box strong {
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
+
+.card-comision-footer {
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  gap: var(--space-sm);
+  justify-content: flex-end;
+  border-bottom-left-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+}
+
+.card-comision-footer .table-actions-cell {
+  flex-wrap: wrap;
+}
+
 /* Texto de referencia del familiar a cargo */
 .comisiones-ref-text {
   font-size: 0.8rem;
   color: #718096;
   margin: 0;
+}
+
+.comisiones-description-text {
+  display: block;
+  color: #4a5568;
+  line-height: 1.4;
+}
+
+.comisiones-participantes-text {
+  display: inline-block;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.comisiones-date-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.comisiones-date-stack small {
+  display: block;
+  color: #718096;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.comisiones-date-stack strong {
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
+
+.comisiones-form-modal {
+  max-width: 920px;
+}
+
+.comisiones-form-modal .modal-body {
+  max-height: 75vh;
+  overflow-y: auto;
+}
+
+.comisiones-form-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.comisiones-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-md);
+}
+
+.comisiones-form-field,
+.comisiones-form-switch {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.comisiones-form-field span,
+.comisiones-form-switch span {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.comisiones-form-field textarea {
+  resize: vertical;
+  min-height: 96px;
+}
+
+.comisiones-form-field-full {
+  grid-column: 1 / -1;
+}
+
+.comisiones-form-switch {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  align-items: center;
+}
+
+.comisiones-form-switch input {
+  width: 18px;
+  height: 18px;
+}
+
+.comisiones-form-footer {
+  justify-content: flex-end;
+}
+
+.comisiones-edit-form-note {
+  margin: 0 0 var(--space-sm);
+  font-size: var(--text-sm);
+  color: #718096;
+}
+
+.section-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.section-heading h4 {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-primary);
+}
+
+.section-heading p {
+  margin: 2px 0 0;
+  color: #718096;
+  font-size: var(--text-sm);
+}
+
+.comisiones-participaciones-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-xs) 0;
+}
+
+.comisiones-add-participante-btn {
+  min-height: 32px;
+  padding: 0.35rem 0.65rem;
+}
+
+.comisiones-participante-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg);
+}
+
+.comisiones-participante-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-sm);
+}
+
+.comisiones-participaciones-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 320px));
+  justify-content: start;
+  gap: var(--space-sm);
+}
+
+.comision-participacion-card {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  width: 100%;
+}
+
+.comision-participacion-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.comision-participacion-card-header h5 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+.comision-participacion-card-header p {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: #718096;
+}
+
+.comision-participacion-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.comision-participacion-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.comision-participacion-meta {
+  background-color: #f7fafc;
+  border: 1px solid #edf2f7;
+  border-radius: var(--radius-sm);
+  padding: 7px 8px;
+}
+
+.comision-participacion-meta span {
+  display: block;
+  margin-bottom: 2px;
+  color: #718096;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.comision-participacion-meta strong {
+  color: var(--color-text);
+  font-size: 0.82rem;
+}
+
+.comision-participacion-card-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.comisiones-participaciones-loading {
+  text-align: center;
+  padding: var(--space-md) 0;
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.comisiones-participaciones-empty-state {
+  padding: var(--space-md);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg);
+  color: #718096;
+  text-align: center;
+}
+
+.comisiones-participaciones-error {
+  margin-bottom: 0;
 }
 
 /* Modal de historial */
@@ -96,4 +450,71 @@
 
 .comisiones-modal-close-btn {
   min-height: 40px;
+}
+
+@media (max-width: 767px) {
+  .comisiones-toolbar-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .comisiones-toolbar-actions button {
+    width: 100%;
+  }
+
+  .comisiones-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .comision-participacion-card-header {
+    flex-direction: column;
+  }
+
+  .comision-participacion-badges {
+    justify-content: flex-start;
+  }
+
+  .comisiones-participante-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .comisiones-participaciones-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .comision-participacion-card {
+    max-width: 100%;
+  }
+
+  .comision-participacion-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card-comision-header {
+    flex-direction: column;
+  }
+
+  .card-comision-body {
+    gap: var(--space-sm);
+  }
+}
+
+@media (min-width: 640px) {
+  .comisiones-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .comisiones-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 640px) {
+  .section-heading {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
 }
