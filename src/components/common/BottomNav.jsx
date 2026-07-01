@@ -2,9 +2,18 @@ import React from 'react';
 
 function BottomNav({ onNavegar, pantallaActiva, usuario }) {
   // 🛡️ Extracción analítica de los permisos del objeto de sesión
-  const esAdministrador = usuario?.rol?.nombre === 'Administrador';
+  const rolUsuario = (usuario?.rol?.nombre || '').toString().toLowerCase().trim();
+  const esAdministrador = rolUsuario === 'administrador';
+  const esCoordinador = rolUsuario === 'coordinador';
+  const esEncargado = rolUsuario === 'encargado';
+  const esVoluntario = rolUsuario === 'voluntarios' || rolUsuario === 'voluntario';
+  const esAyudante = rolUsuario === 'ayudante' || rolUsuario === 'ayudantes';
   const permisosDelUsuario = usuario?.rol?.permisos || [];
   const puedeVerListas = esAdministrador || permisosDelUsuario.some(p => p.nombre === "Gestionar listas");
+  const puedeVerComisiones = (esAdministrador || esCoordinador || permisosDelUsuario.some(p => {
+    const nombreNormalizado = (p.nombre || '').toString().toLowerCase().trim();
+    return nombreNormalizado === 'ver comisiones' || nombreNormalizado === 'ver_comisiones';
+  })) && !esEncargado && !esVoluntario && !esAyudante;
 
   const obtenerEstiloItem = (nombre) => ({
     display: 'flex', 
@@ -39,6 +48,12 @@ function BottomNav({ onNavegar, pantallaActiva, usuario }) {
       <div onClick={() => onNavegar('asistencia')} style={obtenerEstiloItem('asistencia')}>
         <span style={{ fontSize: '1.25rem' }}>📋</span> Asistencia
       </div>
+
+      {puedeVerComisiones && (
+        <div onClick={() => onNavegar('comisiones')} style={obtenerEstiloItem('comisiones')}>
+          <span style={{ fontSize: '1.25rem' }}>🧾</span> Comisiones
+        </div>
+      )}
 
       {/* Selector dinámico para pantallas secundarias */}
       <div className="mobile-nav-select-item">
