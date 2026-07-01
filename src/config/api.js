@@ -638,6 +638,24 @@ export async function createParticipacionComisionRequest(payload) {
 }
 
 /**
+ * Obtiene el historial de participaciones de comisión de un integrante.
+ * @param {number|string} integranteId
+ * @returns {Promise<Array|Object>}
+ */
+export async function getIntegranteParticipacionesComisionRequest(integranteId) {
+  const token = localStorage.getItem('access_token');
+  const id = parseInt(integranteId, 10);
+
+  return apiRequest(`/api/integrantes/${id}/participaciones-comision`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+/**
  * Obtiene el historial global de registros de asistencia.
  * @param {string} [queryParams] Query string opcional (ej: "per_page=100")
  * @returns {Promise<Object>} Colección paginada de registros de asistencia.
