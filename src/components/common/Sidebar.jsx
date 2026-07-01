@@ -42,6 +42,9 @@ function Sidebar({ onNavegar, pantallaActiva }) {
           <li onClick={() => onNavegar('asistencia')}>
             <span style={obtenerEstiloItem('asistencia')}><span>📋</span> Registrar Asistencia</span>
           </li>
+          <li onClick={() => onNavegar('comisiones')}>
+            <span style={obtenerEstiloItem('comisiones')}><span>🧾</span> Comisiones</span>
+          </li>
           <li onClick={() => onNavegar('listas')}>
             <span style={obtenerEstiloItem('listas')}><span>⏳</span> Listas de Espera</span>
           </li>
