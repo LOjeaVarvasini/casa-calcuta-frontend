@@ -1,6 +1,11 @@
 import React from 'react';
 
-function BottomNav({ onNavegar, pantallaActiva }) {
+function BottomNav({ onNavegar, pantallaActiva, usuario }) {
+  // 🛡️ Extracción analítica de los permisos del objeto de sesión
+  const esAdministrador = usuario?.rol?.nombre === 'Administrador';
+  const permisosDelUsuario = usuario?.rol?.permisos || [];
+  const puedeVerListas = esAdministrador || permisosDelUsuario.some(p => p.nombre === "Gestionar listas");
+
   const obtenerEstiloItem = (nombre) => ({
     display: 'flex', 
     flexDirection: 'column', 
@@ -51,9 +56,14 @@ function BottomNav({ onNavegar, pantallaActiva }) {
           }}
         >
           <option value="">Más</option>
-          <option value="listas">⏳ Espera</option>
+          
+          {/* 🛡️ OPTION CONDICIONAL: Listas de Espera */}
+          {puedeVerListas && <option value="listas">⏳ Espera</option>}
+          
           <option value="donaciones">📦 Donaciones</option>
-          <option value="usuarios">⚙️ Admin</option>
+          
+          {/* 🛡️ OPTION CONDICIONAL: Administración */}
+          {esAdministrador && <option value="usuarios">⚙️ Admin</option>}
         </select>
       </div>
 

@@ -7,6 +7,8 @@ import Comisiones from './pages/Comisiones/index.jsx'
 import Donaciones from './pages/Donaciones/index.jsx'
 // ⏳ Importamos la nueva vista modular de Listas
 import Listas from './pages/Listas/index.jsx'
+// 🛡️ Importamos la nueva vista de Administración
+import Administracion from './pages/Administracion/index.jsx'
 import Sidebar from './components/common/Sidebar.jsx'
 import BottomNav from './components/common/BottomNav.jsx'
 import { SESSION_EXPIRED_EVENT, logoutRequest, meRequest } from './config/api.js'
@@ -95,11 +97,34 @@ function App() {
     return <Login onLoginSuccess={handleLogin} />
   }
 
+  // 🛡️ CAPA GLOBAL DE PERMISOS DERIVADA DEL BACKEND
+  const rolUsuario = session.user?.rol?.nombre;
+  const rolUsuarioNormalizado = (rolUsuario || '').toString().toLowerCase().trim();
+  
+  // 1. Verificación para sección de Administración (Solo Administrador)
+  const esAdministrador = rolUsuarioNormalizado === 'administrador';
+  const esCoordinador = rolUsuarioNormalizado === 'coordinador';
+
+  // 2. Verificación para Listas de Espera (Todos MENOS Encargado, Voluntarios y Ayudante)
+  const permisosDelUsuario = session.user?.rol?.permisos || [];
+  const tienePermisoListas = permisosDelUsuario.some(p => p.nombre === "Gestionar listas");
+  const puedeVerListas = esAdministrador || tienePermisoListas;
+
+  // 3. Verificación para Comisiones (Oculto para Encargado, Voluntarios y Ayudantes)
+  const esEncargado = rolUsuarioNormalizado === 'encargado';
+  const esVoluntario = rolUsuarioNormalizado === 'voluntarios' || rolUsuarioNormalizado === 'voluntario';
+  const esAyudante = rolUsuarioNormalizado === 'ayudante' || rolUsuarioNormalizado === 'ayudantes';
+  const tienePermisoComisiones = permisosDelUsuario.some(p => {
+    const nombreNormalizado = (p.nombre || '').toString().toLowerCase().trim();
+    return nombreNormalizado === 'ver comisiones' || nombreNormalizado === 'ver_comisiones';
+  });
+  const puedeVerComisiones = (esAdministrador || esCoordinador || tienePermisoComisiones) && !esEncargado && !esVoluntario && !esAyudante;
+
   return (
     <div className="app-container">
       
-      {/* Componente de Navegación Lateral (Su clase interna .app-sidebar la oculta en móvil) */}
-      <Sidebar onNavegar={handleNavegar} pantallaActiva={pantallaActual} />
+      {/* Componente de Navegación Lateral */}
+      <Sidebar onNavegar={handleNavegar} pantallaActiva={pantallaActual} usuario={session.user} />
 
       {/* Contenedor del Área de Contenido General */}
       <div className="app-content-area">
@@ -111,7 +136,7 @@ function App() {
               {pantallaActual === 'dashboard' && 'Panel Principal'}
               {pantallaActual === 'familias' && 'Padrón Único de Familias'}
               {pantallaActual === 'asistencia' && 'Registro de Asistencia y Entrega'}
-              {pantallaActual === 'comisiones' && 'Gestión de Comisiones de Trabajo'}
+              {pantallaActual === 'comisiones' && (parametrosNavegacion?.familiaId ? 'Gestión de Comisiones de Trabajo' : 'Catálogo de Comisiones')}
               {pantallaActual === 'listas' && 'Listas de Espera'}
               {pantallaActual === 'donaciones' && 'Gestión de Donaciones'}
               {pantallaActual === 'usuarios' && 'Administración de Usuarios'}
@@ -125,18 +150,49 @@ function App() {
         {/* Visor Dinámico de Pantallas con Scroll Controlado */}
         <main className="main-content">
           {pantallaActual === 'dashboard' && <Dashboard onNavegar={handleNavegar} />}
-          {pantallaActual === 'familias' && <Familias onNavegar={handleNavegar} />}
-          {pantallaActual === 'asistencia' && <Asistencia onNavigate={handleNavegar} parametros={parametrosNavegacion} />}
-          {pantallaActual === 'comisiones' && <Comisiones onNavegar={handleNavegar} parametros={parametrosNavegacion} />}
+          {pantallaActual === 'familias' && <Familias onNavegar={handleNavegar} usuario={session.user} />}
+          {pantallaActual === 'asistencia' && <Asistencia onNavigate={handleNavegar} parametros={parametrosNavegacion} usuario={session.user} />}
+          {pantallaActual === 'comisiones' && (
+            puedeVerComisiones ? (
+              <Comisiones onNavegar={handleNavegar} parametros={parametrosNavegacion} />
+            ) : (
+              <div style={{ padding: '2rem', textAlign: 'center', color: '#e53e3e' }}>
+                <h2>Acceso Restringido</h2>
+                <p>Tu rol ({rolUsuario}) no tiene permisos para acceder a Comisiones.</p>
+              </div>
+            )
+          )}
           {pantallaActual === 'donaciones' && <Donaciones onNavegar={handleNavegar} />}
-          {/* ⏳ Inyección de la nueva pantalla interactiva mapeada */}
-          {pantallaActual === 'listas' && <Listas onNavegar={handleNavegar} parametros={parametrosNavegacion} />}
+          
+          {/* 🛡️ RENDERIZADO PROTEGIDO: Listas de Espera */}
+          {pantallaActual === 'listas' && (
+            puedeVerListas ? (
+              <Listas onNavegar={handleNavegar} parametros={parametrosNavegacion} />
+            ) : (
+              <div style={{ padding: '2rem', textAlign: 'center', color: '#e53e3e' }}>
+                <h2>Acceso Restringido</h2>
+                <p>Tu rol ({rolUsuario}) no tiene permisos para acceder a las Listas de Espera.</p>
+              </div>
+            )
+          )}
+          
+          {/* 🛡️ RENDERIZADO PROTEGIDO: Administración */}
+          {pantallaActual === 'usuarios' && (
+            esAdministrador ? (
+              <Administracion onNavegar={handleNavegar} />
+            ) : (
+              <div style={{ padding: '2rem', textAlign: 'center', color: '#e53e3e' }}>
+                <h2>Acceso Denegado</h2>
+                <p>Esta sección es exclusiva para el Administrador del Sistema.</p>
+              </div>
+            )
+          )}
         </main>
 
       </div>
 
-      {/* Componente de Navegación Inferior (Su clase interna .mobile-nav lo oculta en escritorio) */}
-      <BottomNav onNavegar={handleNavegar} pantallaActiva={pantallaActual} />
+      {/* Componente de Navegación Inferior */}
+      <BottomNav onNavegar={handleNavegar} pantallaActiva={pantallaActual} usuario={session.user} />
 
     </div>
   )

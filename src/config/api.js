@@ -503,6 +503,141 @@ export async function getFamiliasPrincipalesRequest(queryParams = 'per_page=100'
 }
 
 /**
+ * Obtiene el listado paginado de comisiones disponibles.
+ * @param {string} [queryParams] Query string opcional (ej: "per_page=15")
+ * @returns {Promise<Object>} Respuesta paginada con data[], links, meta, etc.
+ */
+export async function getComisionesRequest(queryParams = 'per_page=15') {
+  const token = localStorage.getItem('access_token');
+  const path = queryParams ? `/api/comisiones?${queryParams}` : '/api/comisiones';
+
+  return apiRequest(path, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+}
+
+/**
+ * Obtiene el listado paginado de usuarios del sistema.
+ * @param {string} [queryParams] Query string opcional (ej: "per_page=100")
+ * @returns {Promise<Object>} Respuesta paginada con data[], links, meta, etc.
+ */
+export async function getUsuariosRequest(queryParams = 'per_page=15') {
+  const token = localStorage.getItem('access_token');
+  const path = queryParams ? `/api/usuarios?${queryParams}` : '/api/usuarios';
+
+  return apiRequest(path, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+}
+
+function buildComisionPayload(payload = {}) {
+  const nombre = pickString(payload.nombre);
+  const descripcion = pickString(payload.descripcion);
+  const activa = coerceBoolean(payload.activa);
+  const encargado = payload.encargado ?? payload.encargadoId ?? payload.encargado_id ?? null;
+
+  const body = {
+    nombre,
+    descripcion,
+    activa,
+  };
+
+  body.encargado = encargado === null || encargado === '' ? null : Number.parseInt(encargado, 10);
+
+  return body;
+}
+
+export async function createComisionRequest(payload) {
+  const token = localStorage.getItem('access_token');
+
+  return apiRequest('/api/comisiones', {
+    method: 'POST',
+    redirect: 'manual',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(buildComisionPayload(payload)),
+  });
+}
+
+export async function updateComisionRequest(comisionId, payload) {
+  const token = localStorage.getItem('access_token');
+  const id = parseInt(comisionId, 10);
+
+  return apiRequest(`/api/comisiones/${id}`, {
+    method: 'PUT',
+    redirect: 'manual',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(buildComisionPayload(payload)),
+  });
+}
+
+export async function deleteComisionRequest(comisionId) {
+  const token = localStorage.getItem('access_token');
+  const id = parseInt(comisionId, 10);
+
+  return apiRequest(`/api/comisiones/${id}`, {
+    method: 'DELETE',
+    redirect: 'manual',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+    },
+  });
+}
+
+/**
+ * Obtiene las participaciones activas de una comisión.
+ * @param {number|string} comisionId
+ * @returns {Promise<Array|Object>}
+ */
+export async function getComisionParticipacionesActivasRequest(comisionId) {
+  const token = localStorage.getItem('access_token');
+  const id = parseInt(comisionId, 10);
+
+  return apiRequest(`/api/comisiones/${id}/participaciones/activas`, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+}
+
+/**
+ * Crea o actualiza una participación de comisión usando estado activo/inactivo.
+ * @param {Object} payload
+ */
+export async function createParticipacionComisionRequest(payload) {
+  const token = localStorage.getItem('access_token');
+
+  return apiRequest('/api/participaciones-comision', {
+    method: 'POST',
+    redirect: 'manual',
+    headers: {
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
  * Obtiene el historial global de registros de asistencia.
  * @param {string} [queryParams] Query string opcional (ej: "per_page=100")
  * @returns {Promise<Object>} Colección paginada de registros de asistencia.
@@ -683,4 +818,61 @@ export async function updateEstadoListaRequest(familiaId, payload) {
   })
 }
 
+// ==========================================================================
+// 🛡️ FUNCIONES DE GESTIÓN DE USUARIOS (ADMINISTRACIÓN) - AISLADAS
+// ==========================================================================
 
+export async function getUsuariosAdminRequest(queryParams = 'per_page=15') {
+  const token = localStorage.getItem('access_token')
+  const path = queryParams ? `/api/usuarios?${queryParams}` : '/api/usuarios'
+
+  return apiRequest(path, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+}
+
+export async function createUsuarioAdminRequest(payload) {
+  const token = localStorage.getItem('access_token')
+
+  return apiRequest('/api/usuarios', {
+    method: 'POST',
+    redirect: 'manual',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json' // 🍏 Forzado exclusivo aquí
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateUsuarioAdminRequest(usuarioId, payload) {
+  const token = localStorage.getItem('access_token')
+
+  return apiRequest(`/api/usuarios/${parseInt(usuarioId, 10)}`, {
+    method: 'PUT',
+    redirect: 'manual',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json' // 🍏 Forzado exclusivo aquí
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteUsuarioAdminRequest(usuarioId) {
+  const token = localStorage.getItem('access_token')
+
+  return apiRequest(`/api/usuarios/${parseInt(usuarioId, 10)}`, {
+    method: 'DELETE',
+    redirect: 'manual',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    },
+  })
+}

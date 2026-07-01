@@ -1,6 +1,20 @@
 import React from 'react';
 
-function Sidebar({ onNavegar, pantallaActiva }) {
+function Sidebar({ onNavegar, pantallaActiva, usuario }) {
+  // 🛡️ Extracción analítica de los permisos del objeto de sesión
+  const rolUsuario = (usuario?.rol?.nombre || '').toString().toLowerCase().trim();
+  const esAdministrador = rolUsuario === 'administrador';
+  const esCoordinador = rolUsuario === 'coordinador';
+  const esEncargado = rolUsuario === 'encargado';
+  const esVoluntario = rolUsuario === 'voluntarios' || rolUsuario === 'voluntario';
+  const esAyudante = rolUsuario === 'ayudante' || rolUsuario === 'ayudantes';
+  const permisosDelUsuario = usuario?.rol?.permisos || [];
+  const puedeVerListas = esAdministrador || permisosDelUsuario.some(p => p.nombre === "Gestionar listas");
+  const puedeVerComisiones = (esAdministrador || esCoordinador || permisosDelUsuario.some(p => {
+    const nombreNormalizado = (p.nombre || '').toString().toLowerCase().trim();
+    return nombreNormalizado === 'ver comisiones' || nombreNormalizado === 'ver_comisiones';
+  })) && !esEncargado && !esVoluntario && !esAyudante;
+
   // Función constructora para el efecto pastilla invertida (Activo: Fondo Blanco / Texto Azul)
   const obtenerEstiloItem = (nombre) => {
     const esActivo = pantallaActiva === nombre;
@@ -42,15 +56,29 @@ function Sidebar({ onNavegar, pantallaActiva }) {
           <li onClick={() => onNavegar('asistencia')}>
             <span style={obtenerEstiloItem('asistencia')}><span>📋</span> Registrar Asistencia</span>
           </li>
-          <li onClick={() => onNavegar('listas')}>
-            <span style={obtenerEstiloItem('listas')}><span>⏳</span> Listas de Espera</span>
-          </li>
+          {puedeVerComisiones && (
+            <li onClick={() => onNavegar('comisiones')}>
+              <span style={obtenerEstiloItem('comisiones')}><span>🧾</span> Comisiones</span>
+            </li>
+          )}
+
+          {/* 🛡️ CONDICIONAL: Listas de Espera (Oculto para encargados, ayudantes y voluntarios) */}
+          {puedeVerListas && (
+            <li onClick={() => onNavegar('listas')}>
+              <span style={obtenerEstiloItem('listas')}><span>⏳</span> Listas de Espera</span>
+            </li>
+          )}
+
           <li onClick={() => onNavegar('donaciones')}>
             <span style={obtenerEstiloItem('donaciones')}><span>📦</span> Donaciones</span>
           </li>
-          <li onClick={() => onNavegar('usuarios')}>
-            <span style={obtenerEstiloItem('usuarios')}><span>⚙️</span> Administración</span>
-          </li>
+          
+          {/* 🛡️ CONDICIONAL: Administración (Oculto para todos menos Admin) */}
+          {esAdministrador && (
+            <li onClick={() => onNavegar('usuarios')}>
+              <span style={obtenerEstiloItem('usuarios')}><span>⚙️</span> Administración</span>
+            </li>
+          )}
         </ul>
 
         {/* Botón de salida técnica */}

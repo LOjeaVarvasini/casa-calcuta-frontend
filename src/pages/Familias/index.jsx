@@ -213,22 +213,60 @@ function getEstadoListaLabel(estado) {
   return getEstadoLabel(estado);
 }
 
-function Familias({ onNavegar }) {
+function Familias({ onNavegar, usuario }) {
+  // 🛡️ CONTROL DE PERMISOS BASADO EN ROLES DEL BACKEND (Blindado para Administradores y Coordinadores)
+  const rolUsuario = usuario?.rol?.nombre;
+  const rolUsuarioNormalizado = (rolUsuario || '').toString().toLowerCase().trim();
+  const esAdministrador = rolUsuarioNormalizado === 'administrador';
+  const esCoordinador = rolUsuarioNormalizado === 'coordinador';
+  const esEncargado = rolUsuarioNormalizado === 'encargado';
+  const esVoluntario = rolUsuarioNormalizado === 'voluntarios' || rolUsuarioNormalizado === 'voluntario';
+  const esAyudante = rolUsuarioNormalizado === 'ayudante' || rolUsuarioNormalizado === 'ayudantes';
+  
+  const permisosDelUsuario = usuario?.rol?.permisos || [];
+
+  // Verificaciones cruzadas (Por rol explícito o por nombre de permiso en backend)
+  const puedeGestionarFamilias = esAdministrador || esCoordinador || permisosDelUsuario.some(p => {
+    const nombreNormalizado = (p.nombre || '').toString().toLowerCase().trim();
+    return nombreNormalizado === 'gestionar familias' || nombreNormalizado === 'gestionar_familias';
+  });
+
+  const puedeEvaluarPrioridad = esAdministrador || esCoordinador || esEncargado || permisosDelUsuario.some(p => {
+    const nombreNormalizado = (p.nombre || '').toString().toLowerCase().trim();
+    return nombreNormalizado === 'evaluar prioridad social' || nombreNormalizado === 'evaluar_prioridad_social';
+  });
+
+  const puedeVerComisiones = (esAdministrador || esCoordinador || permisosDelUsuario.some(p => {
+    const nombreNormalizado = (p.nombre || '').toString().toLowerCase().trim();
+    return nombreNormalizado === 'ver comisiones' || nombreNormalizado === 'ver_comisiones';
+  })) && !esEncargado && !esVoluntario && !esAyudante;
+
+  // Helper para inyectar estilos grises a botones deshabilitados por rol
+  const getEstiloBotonRestringido = (tienePermiso, estiloOriginal = {}) => {
+    if (tienePermiso) return estiloOriginal;
+    return {
+      ...estiloOriginal,
+      backgroundColor: '#cbd5e0',
+      borderColor: '#cbd5e0',
+      color: '#718096',
+      cursor: 'not-allowed',
+      opacity: 0.75,
+      boxShadow: 'none'
+    };
+  };
+
   // Estados de datos reales (Grilla Principal)
   const [familias, setFamilias] = useState([]);
   const [paginacion, setPaginacion] = useState(null);
 
-  // Estados de UI de la Grilla (Filtros dinámicos conectados a los endpoints de Ignacio)
-  // 🍏 NOTA: el filtro de Estado de Lista (PRINCIPAL/ESPERA) fue removido de esta
-  // pantalla porque ya existe una vista dedicada (Listas de Espera) para ese caso de uso.
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [estadoListaFilter, setEstadoListaFilter] = useState('');
   const [activaFilter, setActivaFilter] = useState('');
-  const [evaluadaFilter, setEvaluadaFilter] = useState(''); // 🍏 Filtro 2 y 3: Evaluadas / No Evaluadas
-  const [sortByFilter, setSortByFilter] = useState(''); // 🍏 Filtro 5: Ordenar por Puntaje
+  const [evaluadaFilter, setEvaluadaFilter] = useState(''); 
+  const [sortByFilter, setSortByFilter] = useState(''); 
 
   // Estados del modal de Nueva Familia (Flujo por etapas)
   const [showNuevoModal, setShowNuevoModal] = useState(false);
@@ -245,7 +283,7 @@ function Familias({ onNavegar }) {
 
   // Estados del modal de Priorización Social
   const [showEvaluacionModal, setShowEvaluacionModal] = useState(false);
-  const [familiaEvaluacionId, setFamiliaEvaluacionId] = useState(null);
+  const [familyEvaluacionId, setFamiliaEvaluacionId] = useState(null);
   const [evaluacionData, setEvaluacionData] = useState({
     situacion_alimentaria: '',
     frecuencia_asistencia: '',
@@ -303,14 +341,10 @@ function Familias({ onNavegar }) {
   const [referenteError, setReferenteError] = useState(null);
   const [referenteSuccess, setReferenteSuccess] = useState(null);
 
-  // ==========================================================================
-  // CARGA INICIAL DE FAMILIAS DESDE LA API CON FILTROS DINÁMICOS MULTIPLES
-  // ==========================================================================
   const cargarFamilias = useCallback(async (filtrosManuales = {}) => {
     setLoading(true);
     setError(null);
 
-    // Permitimos resetear pasándolos por parámetro o leyendo los estados reactivos
     const fPrioridad = filtrosManuales.priorityFilter !== undefined ? filtrosManuales.priorityFilter : priorityFilter;
     const fEstadoLista = filtrosManuales.estadoListaFilter !== undefined ? filtrosManuales.estadoListaFilter : estadoListaFilter;
     const fActiva = filtrosManuales.activaFilter !== undefined ? filtrosManuales.activaFilter : activaFilter;
@@ -321,34 +355,17 @@ function Familias({ onNavegar }) {
       const queryParams = new URLSearchParams();
       queryParams.append('per_page', '15');
 
-      // 1. Filtro por Nivel de Prioridad Social
-      if (fPrioridad) {
-        queryParams.append('prioridad_social', fPrioridad);
-      }
-
-      if (fEstadoLista) {
-        queryParams.append('estado_lista', fEstadoLista);
-      }
-
-      if (fActiva) {
-        queryParams.append('activa', fActiva);
-      }
-
-      // 2 y 3. Filtro de Evaluadas o No Evaluadas
-      if (fEvaluada) {
-        queryParams.append('evaluada', fEvaluada);
-      }
-
-      // 5. Filtro Ordenado por Puntaje Descendente
+      if (fPrioridad) queryParams.append('prioridad_social', fPrioridad);
+      if (fEstadoLista) queryParams.append('estado_lista', fEstadoLista);
+      if (fActiva) queryParams.append('activa', fActiva);
+      if (fEvaluada) queryParams.append('evaluada', fEvaluada);
+      
       if (fSortBy === 'puntaje_desc') {
         queryParams.append('sort_by', 'puntaje_prioridad');
         queryParams.append('sort_order', 'desc');
       }
 
-      // Término de búsqueda general (Mapeo preventivo front)
-      if (searchTerm) {
-        queryParams.append('search', searchTerm);
-      }
+      if (searchTerm) queryParams.append('search', searchTerm);
 
       const data = await getFamiliasRequest(queryParams.toString());
       setFamilias(data.data || []);
@@ -372,9 +389,6 @@ function Familias({ onNavegar }) {
     return () => window.clearTimeout(timerId);
   }, [cargarFamilias]);
 
-  // ==========================================================================
-  // FILTRADO EN CALIENTE (CLIENT-SIDE COMPLEMENTARIO PARA BÚSQUEDA)
-  // ==========================================================================
   const familiasFiltradas = familias.filter((familia) => {
     if (priorityFilter && normalizarTextoClave(familia.prioridad_social) !== normalizarTextoClave(priorityFilter)) {
       return false;
@@ -408,9 +422,6 @@ function Familias({ onNavegar }) {
     return apellido.includes(term) || nombre.includes(term) || dni.includes(term);
   });
 
-  // ==========================================================================
-  // FLUJO DE CONTROL DE "VER FICHA"
-  // ==========================================================================
   const cerrarFichaModal = () => {
     setShowFichaModal(false);
     setFamiliaCreadaId(null);
@@ -507,9 +518,6 @@ function Familias({ onNavegar }) {
     });
   };
 
-  // ========================================================================== 
-  // ACCIÓN DE ELIMINACIÓN DE LA FAMILIA
-  // ========================================================================== 
   const handleEliminarFamilia = async (familiaId = familiaCreadaId) => {
     if (!familiaId) return;
 
@@ -539,9 +547,6 @@ function Familias({ onNavegar }) {
     }
   };
 
-  // ==========================================================================
-  // MANEJO DEL FORMULARIO DE NUEVA FAMILIA
-  // ==========================================================================
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -679,8 +684,8 @@ function Familias({ onNavegar }) {
     }
   };
 
-  const handleAbrirEvaluacionFamilia = (familia = fichaData) => {
-    const origen = familia || fichaData;
+  const handleAbrirEvaluacionFamilia = (family = fichaData) => {
+    const origen = family || fichaData;
     if (!origen) return;
 
     setFamiliaEvaluacionId(origen.id_familia ?? origen.id ?? familiaCreadaId);
@@ -707,7 +712,7 @@ function Familias({ onNavegar }) {
 
   const handleGuardarEvaluacionFamilia = async (e) => {
     e.preventDefault();
-    if (!familiaEvaluacionId) return;
+    if (!familyEvaluacionId) return;
 
     setSavingEvaluacion(true);
     setEvaluacionError(null);
@@ -719,9 +724,9 @@ function Familias({ onNavegar }) {
         participacion_merendero: evaluacionData.participacion_merendero,
       };
 
-      const respuesta = await evaluatePrioridadFamiliaRequest(familiaEvaluacionId, payload);
+      const respuesta = await evaluatePrioridadFamiliaRequest(familyEvaluacionId, payload);
       const familiaActualizada = extraerFamiliaDeRespuesta(respuesta);
-      const idActualizado = extraerIdFamiliaDeRespuesta(respuesta) || familiaEvaluacionId;
+      const idActualizado = extraerIdFamiliaDeRespuesta(respuesta) || familyEvaluacionId;
 
       setShowEvaluacionModal(false);
       setFamiliaEvaluacionId(null);
@@ -820,9 +825,6 @@ function Familias({ onNavegar }) {
     }
   };
 
-  // ==========================================================================
-  // FLUJO DEL SUBMODAL DE AÑADIR INTEGRANTE
-  // ========================================================================== 
   const handleIntegranteInputChange = (e) => {
     const { name, value } = e.target;
     setIntegranteData((prev) => ({ ...prev, [name]: value }));
@@ -847,7 +849,7 @@ function Familias({ onNavegar }) {
       numero_documento: integranteData.numero_documento,
       referente: 0,
       familia_id: parseInt(familiaCreadaId, 10),
-      categoria_etaria: categoriaEtaria, // Sanitización precisa para evitar el 422 de Laravel Cloud
+      categoria_etaria: categoriaEtaria, 
     };
 
     try {
@@ -875,9 +877,6 @@ function Familias({ onNavegar }) {
     }
   };
 
-  // ==========================================================================
-  // FLUJO DEL SUBMODAL DE REFERENTE
-  // ========================================================================== 
   const handleAbrirReferente = async () => {
     if (!familiaCreadaId) return;
 
@@ -935,7 +934,6 @@ function Familias({ onNavegar }) {
     }
   };
 
-  // Helpers visuales
   const getBadgeClass = (prioridad) => {
     return getPrioridadBadgeClass(prioridad);
   };
@@ -962,9 +960,6 @@ function Familias({ onNavegar }) {
 
   return (
     <div>
-      {/* 🍏 TOOLBAR CON LOS SELECTORES DISPONIBLES DE LA API
-          (Se removió el filtro de Estado de Lista: ese filtrado ya vive en la
-          pantalla dedicada de Listas de Espera, así que no tiene sentido duplicarlo aquí) */}
       <section className="page-toolbar" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 'var(--space-sm)', alignItems: 'end' }}>
         <div className="search-filter-group" style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 1.6fr) repeat(4, minmax(160px, 1fr))', gap: 'var(--space-xs)', width: '100%' }}>
 
@@ -1040,10 +1035,11 @@ function Familias({ onNavegar }) {
           </div>
         </div>
 
+        {/* 🛡️ BOTÓN: Nueva Familia (Deshabilitado Dinámicamente por Permisos) */}
         <button
           className="btn-primary"
-          style={{ minHeight: '40px', padding: '0 1.5rem', whiteSpace: 'nowrap' }}
-          onClick={() => setShowNuevoModal(true)}
+          style={getEstiloBotonRestringido(puedeGestionarFamilias, { minHeight: '40px', padding: '0 1.5rem', whiteSpace: 'nowrap' })}
+          onClick={puedeGestionarFamilias ? () => setShowNuevoModal(true) : () => alert('No tienes permisos suficientes para crear una nueva familia.')}
         >
           ➕ Nueva Familia
         </button>
@@ -1101,11 +1097,13 @@ function Familias({ onNavegar }) {
                   >
                     Ver ficha
                   </button>
+
+                  {/* 🛡️ BOTÓN: Comisión de la Tarjeta (Habilitado para Coordinador y Admin) */}
                   <button
                     type="button"
                     className="btn-table-action action-secondary"
-                    style={{ backgroundColor: 'rgba(0,0,0,0.04)', borderColor: 'rgba(0,0,0,0.08)', color: '#4a5568' }}
-                    onClick={() => onNavegar('comisiones', { familiaId: family.id_familia, origen: 'familias' })}
+                    style={getEstiloBotonRestringido(puedeVerComisiones, { backgroundColor: 'rgba(0,0,0,0.04)', borderColor: 'rgba(0,0,0,0.08)', color: '#4a5568' })}
+                    onClick={puedeVerComisiones ? () => onNavegar('comisiones', { familiaId: family.id_familia, origen: 'familias' }) : () => alert('No tienes permisos suficientes para acceder al módulo de comisiones.')}
                   >
                     Comisión
                   </button>
@@ -1175,11 +1173,14 @@ function Familias({ onNavegar }) {
                         <h4>📊 Priorización social</h4>
                         <p>Estos campos son de solo lectura. La validación activa puede mover la familia a PRINCIPAL.</p>
                       </div>
+                      
+                      {/* 🛡️ BOTÓN INTERNO FICHAS: Evaluar Priorización */}
                       <button
                         type="button"
                         className="btn-table-action"
-                        onClick={() => handleAbrirEvaluacionFamilia(fichaData)}
-                        disabled={loadingFicha || deleting}
+                        onClick={(loadingFicha || deleting) ? undefined : (puedeEvaluarPrioridad ? () => handleAbrirEvaluacionFamilia(fichaData) : () => alert('No tienes permisos suficientes para evaluar la prioridad social.'))}
+                        disabled={(loadingFicha || deleting) && puedeEvaluarPrioridad}
+                        style={getEstiloBotonRestringido(puedeEvaluarPrioridad)}
                       >
                         ✍️ Evaluar priorización
                       </button>
@@ -1223,11 +1224,14 @@ function Familias({ onNavegar }) {
                         <h4>👥 Integrantes de la familia</h4>
                         <p>Editá cada miembro desde esta ficha.</p>
                       </div>
+
+                      {/* 🛡️ BOTÓN INTERNO FICHAS: Añadir Integrante (Habilitado para Coordinador) */}
                       <button
                         type="button"
                         className="btn-table-action"
-                        onClick={() => setShowIntegranteModal(true)}
-                        disabled={loadingFicha || deleting}
+                        onClick={(loadingFicha || deleting) ? undefined : (puedeGestionarFamilias ? () => setShowIntegranteModal(true) : () => alert('No tienes permisos suficientes para añadir nuevos integrantes.'))}
+                        disabled={(loadingFicha || deleting) && puedeGestionarFamilias}
+                        style={getEstiloBotonRestringido(puedeGestionarFamilias)}
                       >
                         ➕ Añadir integrante
                       </button>
@@ -1282,12 +1286,14 @@ function Familias({ onNavegar }) {
                                 </div>
                               </div>
 
+                              {/* 🛡️ BOTÓN INTEGRANTE CARD: Editar Integrante (Habilitado para Coordinador) */}
                               <div className="integrante-card-actions">
                                 <button
                                   type="button"
                                   className="btn-table-action"
-                                  onClick={() => handleAbrirEditarIntegrante(integrante)}
-                                  disabled={savingIntegranteEdit || savingFamiliaEdit}
+                                  onClick={(savingIntegranteEdit || savingFamiliaEdit) ? undefined : (puedeGestionarFamilias ? () => handleAbrirEditarIntegrante(integrante) : () => alert('No tienes permisos suficientes para editar este integrante.'))}
+                                  disabled={(savingIntegranteEdit || savingFamiliaEdit) && puedeGestionarFamilias}
+                                  style={getEstiloBotonRestringido(puedeGestionarFamilias)}
                                 >
                                   ✏️ Editar integrante
                                 </button>
@@ -1307,43 +1313,48 @@ function Familias({ onNavegar }) {
               )}
             </div>
 
+            {/* 🛡️ MODAL FOOTER PRINCIPAL: Habilitados correctamente para Administradores y Coordinadores */}
             <div className="modal-footer" style={{ gap: 'var(--space-sm)' }}>
               <button
                 type="button"
                 className="btn-table-action"
-                style={{ backgroundColor: '#e53e3e', color: '#fff', borderColor: '#e53e3e', minHeight: '40px', padding: '0 1rem' }}
-                onClick={handleEliminarFamilia}
-                disabled={loadingFicha || deleting}
+                style={getEstiloBotonRestringido(puedeGestionarFamilias, { backgroundColor: '#e53e3e', color: '#fff', borderColor: '#e53e3e', minHeight: '40px', padding: '0 1rem' })}
+                onClick={(loadingFicha || deleting) ? undefined : (puedeGestionarFamilias ? handleEliminarFamilia : () => alert('No tienes permisos suficientes para eliminar esta familia.'))}
+                disabled={(loadingFicha || deleting) && puedeGestionarFamilias}
               >
                 {deleting ? 'Eliminando...' : '🗑️ Eliminar Familia'}
               </button>
+              
               <button
                 type="button"
                 className="btn-primary"
-                style={{ padding: '0 1rem', minHeight: '40px' }}
-                onClick={handleAbrirReferente}
-                disabled={loadingFicha || deleting}
+                style={getEstiloBotonRestringido(puedeGestionarFamilias, { padding: '0 1rem', minHeight: '40px' })}
+                onClick={(loadingFicha || deleting) ? undefined : (puedeGestionarFamilias ? handleAbrirReferente : () => alert('No tienes permisos suficientes para cambiar el referente operativo.'))}
+                disabled={(loadingFicha || deleting) && puedeGestionarFamilias}
               >
                 👑 Cambiar Referente
               </button>
+              
               <button
                 type="button"
                 className="btn-table-action"
-                style={{ minHeight: '40px', padding: '0 1rem' }}
-                onClick={() => handleAbrirEvaluacionFamilia(fichaData)}
-                disabled={loadingFicha || deleting}
+                style={getEstiloBotonRestringido(puedeEvaluarPrioridad, { minHeight: '40px', padding: '0 1rem' })}
+                onClick={(loadingFicha || deleting) ? undefined : (puedeEvaluarPrioridad ? () => handleAbrirEvaluacionFamilia(fichaData) : () => alert('No tienes permisos suficientes para evaluar la prioridad social.'))}
+                disabled={(loadingFicha || deleting) && puedeEvaluarPrioridad}
               >
                 ✍️ Evaluar Prioridad
               </button>
+              
               <button
                 type="button"
                 className="btn-table-action"
-                style={{ minHeight: '40px', padding: '0 1rem' }}
-                onClick={handleAbrirEditarFamilia}
-                disabled={loadingFicha || deleting}
+                style={getEstiloBotonRestringido(puedeGestionarFamilias, { minHeight: '40px', padding: '0 1rem' })}
+                onClick={(loadingFicha || deleting) ? undefined : (puedeGestionarFamilias ? handleAbrirEditarFamilia : () => alert('No tienes permisos suficientes para editar la información de la familia.'))}
+                disabled={(loadingFicha || deleting) && puedeGestionarFamilias}
               >
                 ✏️ Editar Familia
               </button>
+              
               <button
                 type="button"
                 className="btn-table-action action-secondary"
@@ -1468,30 +1479,37 @@ function Familias({ onNavegar }) {
                     ¿Qué deseás hacer a continuación con la nueva familia creada?
                   </p>
                 </div>
+                
+                {/* 🛡️ ACCIONES POST-CREACIÓN (Habilitadas para Coordinadores) */}
                 <div className="modal-footer" style={{ flexDirection: 'column', gap: 'var(--space-sm)' }}>
                   <button
                     type="button"
                     className="btn-primary"
-                    style={{ backgroundColor: '#4a5568' }}
-                    onClick={() => setShowIntegranteModal(true)}
+                    style={getEstiloBotonRestringido(puedeGestionarFamilias, { backgroundColor: '#4a5568' })}
+                    onClick={puedeGestionarFamilias ? () => setShowIntegranteModal(true) : () => alert('No tienes permisos suficientes para añadir integrantes.')}
                   >
                     👥 Añadir Integrantes a la Familia
                   </button>
+                  
                   <button
                     type="button"
                     className="btn-primary"
-                    onClick={handleAbrirReferente}
+                    style={getEstiloBotonRestringido(puedeGestionarFamilias)}
+                    onClick={puedeGestionarFamilias ? handleAbrirReferente : () => alert('No tienes permisos suficientes para designar referentes.')}
                   >
                     👑 Asignar Referente de la Familia
                   </button>
+                  
                   <button
                     type="button"
                     className="btn-table-action"
-                    onClick={() => handleAbrirEvaluacionFamilia(fichaData ? { ...fichaData, id_familia: familiaCreadaId } : { id_familia: familiaCreadaId })}
-                    disabled={!familiaCreadaId}
+                    style={getEstiloBotonRestringido(puedeEvaluarPrioridad)}
+                    onClick={puedeEvaluarPrioridad ? () => handleAbrirEvaluacionFamilia(fichaData ? { ...fichaData, id_familia: familiaCreadaId } : { id_familia: familiaCreadaId }) : () => alert('No tienes permisos suficientes para evaluar la prioridad social.')}
+                    disabled={!familiaCreadaId && puedeEvaluarPrioridad}
                   >
                     ✍️ Evaluar Prioridad Social
                   </button>
+                  
                   <button
                     type="button"
                     className="btn-table-action action-secondary"
