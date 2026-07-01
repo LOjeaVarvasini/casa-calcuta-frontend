@@ -13,7 +13,7 @@
   font-weight: 600;
   background-color: var(--color-card);
   border-color: var(--color-border);
-  max-width: 220px;
+  max-width: 280px;
   cursor: pointer;
 }
 
@@ -25,7 +25,7 @@
   /* En móviles forzamos a que el selector tome todo el espacio de la derecha de la tarjeta */
   .select-comision {
     max-width: 100%;
-    width: 60%;
+    width: 100%;
   }
 }
 
@@ -195,6 +195,55 @@
   font-size: 0.8rem;
   color: #718096;
   margin: 0;
+}
+
+.comisiones-familia-table {
+  table-layout: fixed;
+}
+
+.comisiones-familia-table th,
+.comisiones-familia-table td {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+.comisiones-familia-table th:nth-child(1),
+.comisiones-familia-table td:nth-child(1) {
+  width: 24%;
+}
+
+.comisiones-familia-table th:nth-child(2),
+.comisiones-familia-table td:nth-child(2) {
+  width: 12%;
+}
+
+.comisiones-familia-table th:nth-child(3),
+.comisiones-familia-table td:nth-child(3) {
+  width: 40%;
+}
+
+.comisiones-familia-table th:nth-child(4),
+.comisiones-familia-table td:nth-child(4) {
+  width: 24%;
+}
+
+.comisiones-familia-table td:first-child,
+.comisiones-familia-table td:nth-child(2),
+.comisiones-familia-table td:nth-child(3) {
+  text-align: left;
+}
+
+.comisiones-familia-table td[data-label="Comisión Actual"] .select-comision {
+  width: min(100%, 300px);
+}
+
+.comisiones-familia-table td[data-label="Acciones"] .table-actions-cell {
+  justify-content: flex-start;
+}
+
+.comisiones-familia-table td[data-label="Acciones"] {
+  text-align: left;
+  width: 140px;
 }
 
 .comisiones-description-text {
@@ -442,10 +491,51 @@
   border-color: var(--color-border);
 }
 
-.comisiones-history-placeholder {
+.comisiones-historial-table-wrapper {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-card);
+}
+
+.comisiones-historial-table {
+  width: 100%;
+  border-collapse: collapse;
   font-size: var(--text-sm);
-  color: #718096;
-  margin: 4px 0;
+}
+
+.comisiones-historial-table th,
+.comisiones-historial-table td {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.comisiones-historial-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.comisiones-historial-table tbody tr:hover {
+  background-color: rgba(247, 250, 252, 0.7);
+}
+
+.comisiones-historial-table td[data-label="Movimiento"] {
+  white-space: nowrap;
+}
+
+.comisiones-historial-table td[data-label="Comisión"] {
+  white-space: nowrap;
+}
+
+.comisiones-historial-table td[data-label="Observaciones"] {
+  min-width: 180px;
 }
 
 .comisiones-modal-close-btn {

@@ -11,6 +11,13 @@
   padding: 0;
 }
 
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
 body {
   font-family: var(--font-main);
   background-color: var(--color-bg);
@@ -19,9 +26,8 @@ body {
   font-size: var(--text-base);
   -webkit-text-size-adjust: 100%; /* Evita problemas de zoom en iOS */
   min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
+  overflow: hidden;
 }
 
 /* 2. COMPONENTE FORMULARIO: INPUTS ESTÁNDAR (Reutilizable en CRUDs, Asistencia, etc.) */
@@ -190,8 +196,10 @@ body {
 .app-container {
   display: flex;
   min-height: 100vh;
+  height: 100vh;
   width: 100vw;
   background-color: var(--color-bg);
+  overflow: hidden;
 }
 
 /* BARRA LATERAL (SIDEBAR) - Por defecto oculta en móvil */
@@ -199,10 +207,12 @@ body {
   display: none; /* 🍏 OCULTA EN MÓVIL */
   flex-direction: column;
   width: 260px;
+  height: 100vh;
   background-color: #10344e; /* Primario oscurecido para contraste */
   color: #ffffff;
   padding: var(--space-md);
   border-right: 1px solid var(--color-border);
+  overflow: hidden;
 }
 
 .sidebar-header {
@@ -253,7 +263,10 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 0; /* Evita desbordamiento en flexbox */
+  height: 100vh;
   padding-bottom: 60px; /* 🍏 Espacio para que la barra inferior en móvil no tape nada */
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Barra superior de contexto */
@@ -302,6 +315,7 @@ body {
   flex: 1;
   padding: var(--space-md);
   overflow-y: auto;
+  min-height: 0;
 }
 
 /* ==========================================================================
@@ -738,6 +752,8 @@ body {
 
   .app-content-area {
     padding-bottom: 0; /* 🍏 Quita el aire inferior en PC porque ya no está la barra fija */
+    min-height: 0;
+    height: 100vh;
   }
 
   .user-info {
@@ -750,6 +766,7 @@ body {
 
   .main-content {
     padding: var(--space-lg);
+    min-height: 0;
   }
 
   .header-title h1 {

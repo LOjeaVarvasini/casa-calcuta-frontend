@@ -1103,7 +1103,11 @@ function Familias({ onNavegar, usuario }) {
                     type="button"
                     className="btn-table-action action-secondary"
                     style={getEstiloBotonRestringido(puedeVerComisiones, { backgroundColor: 'rgba(0,0,0,0.04)', borderColor: 'rgba(0,0,0,0.08)', color: '#4a5568' })}
-                    onClick={puedeVerComisiones ? () => onNavegar('comisiones', { familiaId: family.id_familia, origen: 'familias' }) : () => alert('No tienes permisos suficientes para acceder al módulo de comisiones.')}
+                    onClick={puedeVerComisiones ? () => onNavegar('comisiones', {
+                      familiaId: family.id_familia,
+                      referenteFamilia: family.referente ? `${family.referente.nombre || ''} ${family.referente.apellido || ''}`.trim() : '',
+                      origen: 'familias',
+                    }) : () => alert('No tienes permisos suficientes para acceder al módulo de comisiones.')}
                   >
                     Comisión
                   </button>

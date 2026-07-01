@@ -120,6 +120,14 @@ function App() {
   });
   const puedeVerComisiones = (esAdministrador || esCoordinador || tienePermisoComisiones) && !esEncargado && !esVoluntario && !esAyudante;
 
+  const tituloComisiones = (() => {
+    if (!parametrosNavegacion?.familiaId) return 'Catálogo de Comisiones';
+
+    const referenteFamilia = (parametrosNavegacion?.referenteFamilia || '').trim();
+    const familiaEtiqueta = `Familia #${parametrosNavegacion.familiaId}`;
+    return referenteFamilia ? `Gestión de Comisiones de Trabajo - ${familiaEtiqueta} - ${referenteFamilia}` : `Gestión de Comisiones de Trabajo - ${familiaEtiqueta}`;
+  })();
+
   return (
     <div className="app-container">
       
@@ -136,7 +144,7 @@ function App() {
               {pantallaActual === 'dashboard' && 'Panel Principal'}
               {pantallaActual === 'familias' && 'Padrón Único de Familias'}
               {pantallaActual === 'asistencia' && 'Registro de Asistencia y Entrega'}
-              {pantallaActual === 'comisiones' && (parametrosNavegacion?.familiaId ? 'Gestión de Comisiones de Trabajo' : 'Catálogo de Comisiones')}
+               {pantallaActual === 'comisiones' && tituloComisiones}
               {pantallaActual === 'listas' && 'Listas de Espera'}
               {pantallaActual === 'donaciones' && 'Gestión de Donaciones'}
               {pantallaActual === 'usuarios' && 'Administración de Usuarios'}

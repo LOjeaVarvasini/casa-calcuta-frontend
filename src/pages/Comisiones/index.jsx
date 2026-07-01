@@ -6,9 +6,9 @@ import {
   getComisionParticipacionesActivasRequest,
   getComisionesRequest,
   getFamiliasPrincipalesRequest,
+  getIntegranteParticipacionesComisionRequest,
   getIntegrantesRequest,
   getUsuariosRequest,
-  updateComisionFamiliaRequest,
   updateComisionRequest,
 } from '../../config/api.js';
 import './comisiones.css';
@@ -33,12 +33,13 @@ function Comisiones({ onNavegar, parametros }) {
   const esModoFamilia = Boolean(parametros?.familiaId);
 
   // Datos reales del backend
-  const [familias, setFamilias] = useState([]);
+  const [integrantesFamilia, setIntegrantesFamilia] = useState([]);
+  const [comisionesActivasFamilia, setComisionesActivasFamilia] = useState([]);
+  const [comisionesActivasPorIntegrante, setComisionesActivasPorIntegrante] = useState({});
+  const [comisionesFamiliaPorId, setComisionesFamiliaPorId] = useState({});
   const [comisiones, setComisiones] = useState([]);
   const [usuariosEncargados, setUsuariosEncargados] = useState([]);
   const [familiasDisponibles, setFamiliasDisponibles] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedFamily, setSelectedFamily] = useState(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingComision, setEditingComision] = useState(null);
   const [formData, setFormData] = useState(emptyComisionForm);
@@ -54,6 +55,12 @@ function Comisiones({ onNavegar, parametros }) {
   const [integrantesFamiliaSeleccionada, setIntegrantesFamiliaSeleccionada] = useState([]);
   const [loadingIntegrantesFamilia, setLoadingIntegrantesFamilia] = useState(false);
   const [integrantesFamiliaError, setIntegrantesFamiliaError] = useState(null);
+  const [cambioComisionIntegranteId, setCambioComisionIntegranteId] = useState(null);
+  const [isHistorialModalOpen, setIsHistorialModalOpen] = useState(false);
+  const [historialIntegrante, setHistorialIntegrante] = useState(null);
+  const [historialParticipaciones, setHistorialParticipaciones] = useState([]);
+  const [loadingHistorialParticipaciones, setLoadingHistorialParticipaciones] = useState(false);
+  const [historialParticipacionesError, setHistorialParticipacionesError] = useState(null);
 
   const formatearEncargado = (encargado) => {
     if (!encargado) return 'Sin encargado';
@@ -72,6 +79,33 @@ function Comisiones({ onNavegar, parametros }) {
     const ref = familia.referente || {};
     const nombreReferente = `${ref.nombre || ''} ${ref.apellido || ''}`.trim();
     return nombreReferente ? `Familia #${familia.id_familia} - ${nombreReferente}` : `Familia #${familia.id_familia}`;
+  };
+
+  const formatearNombreComision = (comision) => {
+    if (!comision) return 'Sin comisión';
+    return comision.nombre || `Comisión #${comision.id_comision}`;
+  };
+
+  const formatearNombreComisionPorId = (comisionId) => {
+    const id = Number.parseInt(comisionId, 10);
+    if (Number.isNaN(id)) return 'Sin comisión';
+
+    return formatearNombreComision(comisionesFamiliaPorId[id] || { id_comision: id });
+  };
+
+  const normalizarListaIntegrantes = (payload) => {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.integrantes)) return payload.integrantes;
+    if (Array.isArray(payload?.members)) return payload.members;
+    return [];
+  };
+
+  const normalizarListaComisiones = (payload) => {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.comisiones)) return payload.comisiones;
+    return [];
   };
 
   const formatearParticipantes = (valor) => {
@@ -122,6 +156,70 @@ function Comisiones({ onNavegar, parametros }) {
       setLoadingParticipaciones(false);
     }
   }, []);
+
+  const cargarDatosModoFamilia = useCallback(async () => {
+    if (!parametros?.familiaId) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const [respuestaIntegrantes, respuestaComisiones] = await Promise.all([
+        getIntegrantesRequest(parametros.familiaId),
+        getComisionesRequest('per_page=100'),
+      ]);
+
+      const integrantes = normalizarListaIntegrantes(respuestaIntegrantes);
+      const comisionesTodas = normalizarListaComisiones(respuestaComisiones);
+      const comisionesActivas = comisionesTodas.filter((comision) => comision.activa === true);
+      const mapaComisiones = comisionesTodas.reduce((acumulado, comision) => {
+        acumulado[comision.id_comision] = comision;
+        return acumulado;
+      }, {});
+
+      const participacionesPorComision = await Promise.all(
+        comisionesTodas.map(async (comision) => {
+          const respuestaParticipaciones = await getComisionParticipacionesActivasRequest(comision.id_comision);
+          const participaciones = Array.isArray(respuestaParticipaciones)
+            ? respuestaParticipaciones
+            : (respuestaParticipaciones?.data || []);
+
+          return { comision, participaciones };
+        })
+      );
+
+      const mapaAsignaciones = participacionesPorComision.reduce((acumulado, { comision, participaciones }) => {
+        participaciones.forEach((participante) => {
+          const integranteId = Number.parseInt(participante?.id_integrante, 10);
+          if (Number.isNaN(integranteId) || acumulado[integranteId]) return;
+
+          acumulado[integranteId] = {
+            id_comision: comision.id_comision,
+            nombre: formatearNombreComision(comision),
+            activa: comision.activa === true,
+          };
+        });
+
+        return acumulado;
+      }, {});
+
+      setIntegrantesFamilia(integrantes);
+      setComisionesActivasFamilia(comisionesActivas);
+      setComisionesActivasPorIntegrante(mapaAsignaciones);
+      setComisionesFamiliaPorId(mapaComisiones);
+      setComisiones([]);
+      setUsuariosEncargados([]);
+      setFamiliasDisponibles([]);
+    } catch (err) {
+      setError(err.message || 'No se pudieron cargar los integrantes y comisiones activas de la familia.');
+      setIntegrantesFamilia([]);
+      setComisionesActivasFamilia([]);
+      setComisionesActivasPorIntegrante({});
+      setComisionesFamiliaPorId({});
+    } finally {
+      setLoading(false);
+    }
+  }, [parametros?.familiaId]);
 
   const openParticipanteForm = () => {
     setParticipanteForm(emptyParticipanteForm);
@@ -221,23 +319,7 @@ function Comisiones({ onNavegar, parametros }) {
     setError(null);
     try {
       if (esModoFamilia) {
-        const respuesta = await getFamiliasPrincipalesRequest('per_page=100');
-        const data = respuesta.data || [];
-
-        // Filtramos solo las familias de la lista PRINCIPAL y activas
-        let filtradas = data.filter(
-          (f) => (f.estado_lista || '').toUpperCase() === 'PRINCIPAL' && f.activa === true
-        );
-
-        // Si venimos filtrados por ID desde otra pantalla
-        if (parametros?.familiaId) {
-          filtradas = filtradas.filter((f) => f.id_familia === parseInt(parametros.familiaId, 10));
-        }
-
-        setFamilias(filtradas);
-        setComisiones([]);
-        setUsuariosEncargados([]);
-        setFamiliasDisponibles([]);
+        await cargarDatosModoFamilia();
       } else {
         const [respuestaComisiones, respuestaUsuarios, respuestaFamilias] = await Promise.all([
           getComisionesRequest('per_page=15'),
@@ -254,18 +336,24 @@ function Comisiones({ onNavegar, parametros }) {
         setUsuariosEncargados(
           usuarios.filter((usuario) => Number(usuario?.rol?.id_rol) === 3 && (usuario.activo === true || usuario.activo === 1 || usuario.activo === '1'))
         );
-        setFamilias([]);
+        setIntegrantesFamilia([]);
+        setComisionesActivasFamilia([]);
+        setComisionesActivasPorIntegrante({});
+        setComisionesFamiliaPorId({});
       }
     } catch (err) {
-      setError(err.message || (esModoFamilia ? 'No se pudieron sincronizar las comisiones.' : 'No se pudieron cargar las comisiones.'));
-      setFamilias([]);
+      setError(err.message || (esModoFamilia ? 'No se pudieron sincronizar los integrantes y comisiones.' : 'No se pudieron cargar las comisiones.'));
+      setIntegrantesFamilia([]);
+      setComisionesActivasFamilia([]);
+      setComisionesActivasPorIntegrante({});
+      setComisionesFamiliaPorId({});
       setComisiones([]);
       setUsuariosEncargados([]);
       setFamiliasDisponibles([]);
     } finally {
       setLoading(false);
     }
-  }, [esModoFamilia, parametros]);
+  }, [cargarDatosModoFamilia, esModoFamilia]);
 
   useEffect(() => {
     cargarFamilias();
@@ -275,12 +363,13 @@ function Comisiones({ onNavegar, parametros }) {
   const registrosFiltrados = useMemo(() => {
     const query = busqueda.toLowerCase().trim();
     if (esModoFamilia) {
-      if (!query) return familias;
+      if (!query) return integrantesFamilia;
 
-      return familias.filter((f) => {
-        const apellido = (f.referente?.apellido || '').toLowerCase();
-        const nombre = (f.referente?.nombre || '').toLowerCase();
-        return apellido.includes(query) || nombre.includes(query);
+      return integrantesFamilia.filter((integrante) => {
+        const nombre = formatearNombreIntegrante(integrante).toLowerCase();
+        const apellido = (integrante.apellido || '').toLowerCase();
+        const dni = (integrante.numero_documento || '').toLowerCase();
+        return nombre.includes(query) || apellido.includes(query) || dni.includes(query);
       });
     }
 
@@ -293,7 +382,94 @@ function Comisiones({ onNavegar, parametros }) {
       const email = (comision.encargado?.email || '').toLowerCase();
       return nombre.includes(query) || descripcion.includes(query) || encargado.includes(query) || email.includes(query);
     });
-  }, [familias, comisiones, busqueda, esModoFamilia]);
+  }, [integrantesFamilia, comisiones, busqueda, esModoFamilia]);
+
+  const handleCambiarComisionIntegrante = async (integrante, nuevaComisionId) => {
+    const integranteId = Number.parseInt(integrante.id_integrante, 10);
+    const comisionActual = comisionesActivasPorIntegrante[integranteId] || null;
+    const tieneNuevaComision = nuevaComisionId !== '' && nuevaComisionId !== null && nuevaComisionId !== undefined;
+    const nuevaComisionIdNum = tieneNuevaComision ? Number.parseInt(nuevaComisionId, 10) : null;
+
+    if (Number.isNaN(integranteId)) return;
+    if (tieneNuevaComision && Number.isNaN(nuevaComisionIdNum)) return;
+    if (comisionActual?.id_comision === nuevaComisionIdNum) return;
+    if (!tieneNuevaComision && !comisionActual?.id_comision) return;
+
+    setCambioComisionIntegranteId(integranteId);
+    setError(null);
+
+    try {
+      const fechaHoy = new Date().toISOString().slice(0, 10);
+
+      if (comisionActual?.id_comision) {
+        await createParticipacionComisionRequest({
+          fecha_inicio: fechaHoy,
+          estado: 'inactivo',
+          observaciones: tieneNuevaComision ? 'Cambio de comisión desde el panel de familias' : 'Sin asignar desde el panel de familias',
+          integrante_id: integranteId,
+          comision_id: comisionActual.id_comision,
+        });
+      }
+
+      if (tieneNuevaComision && nuevaComisionIdNum) {
+        await createParticipacionComisionRequest({
+          fecha_inicio: fechaHoy,
+          estado: 'activo',
+          observaciones: 'Cambio de comisión desde el panel de familias',
+          integrante_id: integranteId,
+          comision_id: nuevaComisionIdNum,
+        });
+      }
+
+      await cargarDatosModoFamilia();
+    } catch (err) {
+      setError(err.message || 'No se pudo actualizar la comisión del integrante.');
+    } finally {
+      setCambioComisionIntegranteId(null);
+    }
+  };
+
+  const cargarHistorialIntegrante = useCallback(async (integranteId) => {
+    setLoadingHistorialParticipaciones(true);
+    setHistorialParticipacionesError(null);
+
+    try {
+      const respuesta = await getIntegranteParticipacionesComisionRequest(integranteId);
+      const data = Array.isArray(respuesta) ? respuesta : (respuesta?.data || []);
+      const ordenado = [...data].sort((a, b) => {
+        const fechaA = new Date(a.fecha_inicio || a.created_at || 0).getTime();
+        const fechaB = new Date(b.fecha_inicio || b.created_at || 0).getTime();
+        return fechaB - fechaA;
+      });
+
+      setHistorialParticipaciones(ordenado);
+    } catch (err) {
+      setHistorialParticipaciones([]);
+      setHistorialParticipacionesError(err.message || 'No se pudo cargar el historial de participaciones.');
+    } finally {
+      setLoadingHistorialParticipaciones(false);
+    }
+  }, []);
+
+  const handleOpenHistorialIntegrante = (integrante) => {
+    setHistorialIntegrante(integrante);
+    setIsHistorialModalOpen(true);
+    setHistorialParticipaciones([]);
+    setHistorialParticipacionesError(null);
+
+    const integranteId = Number.parseInt(integrante?.id_integrante, 10);
+    if (!Number.isNaN(integranteId)) {
+      cargarHistorialIntegrante(integranteId);
+    }
+  };
+
+  const handleCloseHistorialIntegrante = () => {
+    setIsHistorialModalOpen(false);
+    setHistorialIntegrante(null);
+    setHistorialParticipaciones([]);
+    setHistorialParticipacionesError(null);
+    setLoadingHistorialParticipaciones(false);
+  };
 
   const resumenComisiones = useMemo(() => {
     const total = comisiones.length;
@@ -338,33 +514,6 @@ function Comisiones({ onNavegar, parametros }) {
     if (!isParticipanteFormOpen) return;
     cargarIntegrantesFamiliaSeleccionada(participanteForm.familia_id);
   }, [isParticipanteFormOpen, participanteForm.familia_id, cargarIntegrantesFamiliaSeleccionada]);
-
-  // Manejar el cambio automático de comisión en el select
-  const handleComisionChange = async (familiaId, nuevaComision) => {
-    try {
-      // Impactamos directo en Laravel Cloud
-      await updateComisionFamiliaRequest(familiaId, nuevaComision);
-
-      // Actualizamos el estado local de inmediato para mantener consistencia visual
-      setFamilias((prev) =>
-        prev.map((f) =>
-          f.id_familia === familiaId ? { ...f, prioridad_social: nuevaComision } : f
-        )
-      );
-    } catch (err) {
-      alert(err.message || 'No se pudo guardar el cambio de comisión.');
-    }
-  };
-
-  const handleOpenHistory = (familia) => {
-    setSelectedFamily(familia);
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSelectedFamily(null);
-  };
 
   const handleOpenCreateModal = () => {
     setEditingComision(null);
@@ -528,11 +677,11 @@ function Comisiones({ onNavegar, parametros }) {
 
   const renderModoFamilia = () => (
     <section className="table-responsive-container">
-      <table className="custom-table custom-table-responsive">
+      <table className="custom-table custom-table-responsive comisiones-familia-table">
         <thead>
           <tr>
-            <th>Familia Beneficiaria</th>
-            <th>Integrantes Mayores</th>
+            <th>Integrante</th>
+            <th>DNI</th>
             <th>Comisión Actual</th>
             <th>Acciones</th>
           </tr>
@@ -541,51 +690,55 @@ function Comisiones({ onNavegar, parametros }) {
           {registrosFiltrados.length === 0 && (
             <tr>
               <td colSpan="4" className="comisiones-empty-state">
-                No se encontraron registros que coincidan con la búsqueda.
+                No se encontraron integrantes que coincidan con la búsqueda.
               </td>
             </tr>
           )}
 
-          {registrosFiltrados.map((f) => {
-            const ref = f.referente || {};
-
-            // Calculamos dinámicamente si hay datos de integrantes mayores, o dejamos 1 por defecto (el referente)
-            const mayoresCount = f.puntaje_menores ? parseInt(f.puntaje_menores, 10) : 1;
-
-            // Mapeamos el string de la comisión (usando prioridad_social o la prop que use Ignacio como placeholder provisional)
-            // ⚠️ NOTA TÉCNICA: este mapeo pierde información. 'baja' -> cocina, 'media' -> ropero,
-            // y CUALQUIER otro valor (incluyendo 'limpieza' real) cae en 'ninguna'. Revisar con backend
-            // si 'comision_actual' debería ser un campo propio en vez de reusar 'prioridad_social'.
-            const comisionActual = f.prioridad_social === 'baja' ? 'cocina' : f.prioridad_social === 'media' ? 'ropero' : 'ninguna';
+          {registrosFiltrados.map((integrante) => {
+            const integranteId = Number.parseInt(integrante.id_integrante, 10);
+            const comisionActual = comisionesActivasPorIntegrante[integranteId] || null;
+            const comisionActualEsActiva = Boolean(comisionActual?.activa);
+            const nombreComisionActual = comisionActual ? formatearNombreComision(comisionActual) : 'Sin comisión';
 
             return (
-              <tr key={f.id_familia}>
-                <td data-label="Familia">
-                  <strong>{ref.apellido || `Familia #${f.id_familia}`}</strong>
+              <tr key={integrante.id_integrante}>
+                <td data-label="Integrante">
+                  <strong>{formatearNombreIntegrante(integrante)}</strong>
                   <p className="comisiones-ref-text">
-                    Ref: {ref.nombre || '[Sin Nombre]'} {ref.apellido || ''}
+                    {integrante.referente ? 'Referente' : 'Participante'}
+                    {integrante.categoria_etaria ? ` · ${integrante.categoria_etaria}` : ''}
                   </p>
                 </td>
-                <td data-label="Mayores">
-                  {mayoresCount} Adulto{mayoresCount !== 1 ? 's' : ''}
+                <td data-label="DNI">
+                  {integrante.numero_documento || '[N/D]'}
                 </td>
-                <td data-label="Comisión">
+                <td data-label="Comisión Actual">
                   <select
                     className="form-control select-comision"
-                    value={comisionActual}
-                    onChange={(e) => handleComisionChange(f.id_familia, e.target.value)}
+                    value={comisionActual?.id_comision || ''}
+                    onChange={(e) => handleCambiarComisionIntegrante(integrante, e.target.value)}
+                    disabled={cambioComisionIntegranteId === integranteId || (comisionesActivasFamilia.length === 0 && !comisionActual?.id_comision)}
                   >
-                    <option value="cocina">🍳 Cocina y Porciones</option>
-                    <option value="ropero">👕 Ropero Comunitario</option>
-                    <option value="limpieza">🧹 Limpieza e Higiene</option>
-                    <option value="ninguna">❌ Sin Asignar</option>
+                    <option value="">Sin asignar</option>
+                    {comisionActual && !comisionActualEsActiva && (
+                      <option value={comisionActual.id_comision} disabled>
+                        {nombreComisionActual} (actual, inactiva)
+                      </option>
+                    )}
+                    {comisionesActivasFamilia.map((comision) => (
+                      <option key={comision.id_comision} value={comision.id_comision}>
+                        {formatearNombreComision(comision)}
+                      </option>
+                    ))}
                   </select>
                 </td>
                 <td data-label="Acciones">
                   <div className="table-actions-cell">
                     <button
+                      type="button"
                       className="btn-table-action"
-                      onClick={() => handleOpenHistory({ ...f, comisionActual, apellidoFamilia: ref.apellido, referente: `${ref.nombre} ${ref.apellido}` })}
+                      onClick={() => handleOpenHistorialIntegrante(integrante)}
                     >
                       Ver Historial
                     </button>
@@ -606,9 +759,9 @@ function Comisiones({ onNavegar, parametros }) {
 
       {/* CAJA INFORMATIVA */}
       <div className="info-profile-box comisiones-info-box">
-        {esModoFamilia ? (
+      {esModoFamilia ? (
           <p className="comisiones-info-text">
-            💡 Las comisiones distribuyen las tareas obligatorias del merendero entre las familias beneficiarias de la Lista Principal. Los cambios en el selector se impactan automáticamente en el servidor cloud.
+            💡 Esta vista muestra los integrantes de la familia y permite reasignar su comisión actual usando solo las comisiones activas.
           </p>
         ) : (
           <>
@@ -628,7 +781,7 @@ function Comisiones({ onNavegar, parametros }) {
       <section className="page-toolbar comisiones-toolbar">
         <input
           type="text"
-          placeholder={esModoFamilia ? '🔍 Buscar familia por apellido o referente...' : '🔍 Buscar comisión, encargado o descripción...'}
+          placeholder={esModoFamilia ? '🔍 Buscar integrante por nombre o DNI...' : '🔍 Buscar comisión, encargado o descripción...'}
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
           className="form-control comisiones-search-input"
@@ -649,12 +802,78 @@ function Comisiones({ onNavegar, parametros }) {
 
       {loading && (
         <div className="comisiones-loading-state">
-          {esModoFamilia ? 'Sincronizando asignación de comisiones...' : 'Cargando comisiones disponibles...'}
+          {esModoFamilia ? 'Cargando integrantes y comisiones activas...' : 'Cargando comisiones disponibles...'}
         </div>
       )}
 
       {/* TABLA RESPONSIVE */}
       {!loading && !error && (esModoFamilia ? renderModoFamilia() : renderCatalogoComisiones())}
+
+      {esModoFamilia && isHistorialModalOpen && historialIntegrante && (
+        <div className="modal-overlay" onClick={handleCloseHistorialIntegrante}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Historial de Asignaciones</h3>
+            </div>
+            <div className="modal-body">
+              <p><strong>Integrante:</strong> {formatearNombreIntegrante(historialIntegrante)}</p>
+              <p><strong>DNI:</strong> {historialIntegrante.numero_documento || '[N/D]'}</p>
+              <p>
+                <strong>Comisión actual:</strong> {(() => {
+                  const integranteId = Number.parseInt(historialIntegrante.id_integrante, 10);
+                  const comision = comisionesActivasPorIntegrante[integranteId] || null;
+                  return comision ? formatearNombreComision(comision) : 'Sin asignar';
+                })()}
+              </p>
+              <hr className="comisiones-modal-divider" />
+
+              {historialParticipacionesError && (
+                <div className="login-error comisiones-participaciones-error">
+                  {historialParticipacionesError}
+                </div>
+              )}
+
+              <div className="comisiones-historial-table-wrapper">
+                {loadingHistorialParticipaciones ? (
+                  <div className="comisiones-participaciones-loading">Cargando historial...</div>
+                ) : historialParticipaciones.length === 0 ? (
+                  <div className="comisiones-participaciones-empty-state">No hay participaciones registradas.</div>
+                ) : (
+                  <table className="comisiones-historial-table">
+                    <thead>
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Movimiento</th>
+                        <th>Comisión</th>
+                        <th>Observaciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {historialParticipaciones.map((participacion) => (
+                        <tr key={participacion.id_participacion_comision}>
+                          <td data-label="Fecha">{formatearFechaLegible(participacion.fecha_inicio)}</td>
+                          <td data-label="Movimiento">
+                            <span className={`badge ${participacion.estado === 'activo' ? 'badge-success' : 'badge-danger'}`}>
+                              {participacion.estado === 'activo' ? 'Alta' : 'Baja'}
+                            </span>
+                          </td>
+                          <td data-label="Comisión">{formatearNombreComisionPorId(participacion.comision_id)}</td>
+                          <td data-label="Observaciones">{participacion.observaciones || 'Sin observaciones'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-primary comisiones-modal-close-btn" onClick={handleCloseHistorialIntegrante}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL: ALTA / EDICIÓN DE COMISIONES */}
       {!esModoFamilia && isFormModalOpen && (
@@ -894,38 +1113,6 @@ function Comisiones({ onNavegar, parametros }) {
         </div>
       )}
 
-      {/* MODAL: HISTORIAL DE COMISIONES */}
-      {esModoFamilia && isModalOpen && selectedFamily && (
-        <div className="modal-overlay" onClick={handleCloseModal}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Historial de Asignaciones</h3>
-            </div>
-            <div className="modal-body">
-              <p><strong>Familia:</strong> {selectedFamily.apellidoFamilia || 'Designada'}</p>
-              <p><strong>Referente titular:</strong> {selectedFamily.referente}</p>
-              <p>
-                <strong>Estado actual:</strong> {
-                  selectedFamily.comisionActual === 'cocina' ? '🍳 Cocina y Porciones' :
-                  selectedFamily.comisionActual === 'ropero' ? '👕 Ropero Comunitario' :
-                  selectedFamily.comisionActual === 'limpieza' ? '🧹 Limpieza e Higiene' : '❌ Sin Asignar'
-                }
-              </p>
-              <hr className="comisiones-modal-divider" />
-
-              {/* Pendiente de endpoint real de historial (no existe aún en api.js) */}
-              <p className="comisiones-history-placeholder">
-                📋 [Fecha]: [Estado Anterior] → [Estado Nuevo]
-              </p>
-            </div>
-            <div className="modal-footer">
-              <button className="btn-primary comisiones-modal-close-btn" onClick={handleCloseModal}>
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
