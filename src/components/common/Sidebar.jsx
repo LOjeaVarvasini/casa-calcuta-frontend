@@ -2,9 +2,18 @@ import React from 'react';
 
 function Sidebar({ onNavegar, pantallaActiva, usuario }) {
   // 🛡️ Extracción analítica de los permisos del objeto de sesión
-  const esAdministrador = usuario?.rol?.nombre === 'Administrador';
+  const rolUsuario = (usuario?.rol?.nombre || '').toString().toLowerCase().trim();
+  const esAdministrador = rolUsuario === 'administrador';
+  const esCoordinador = rolUsuario === 'coordinador';
+  const esEncargado = rolUsuario === 'encargado';
+  const esVoluntario = rolUsuario === 'voluntarios' || rolUsuario === 'voluntario';
+  const esAyudante = rolUsuario === 'ayudante' || rolUsuario === 'ayudantes';
   const permisosDelUsuario = usuario?.rol?.permisos || [];
   const puedeVerListas = esAdministrador || permisosDelUsuario.some(p => p.nombre === "Gestionar listas");
+  const puedeVerComisiones = (esAdministrador || esCoordinador || permisosDelUsuario.some(p => {
+    const nombreNormalizado = (p.nombre || '').toString().toLowerCase().trim();
+    return nombreNormalizado === 'ver comisiones' || nombreNormalizado === 'ver_comisiones';
+  })) && !esEncargado && !esVoluntario && !esAyudante;
 
   // Función constructora para el efecto pastilla invertida (Activo: Fondo Blanco / Texto Azul)
   const obtenerEstiloItem = (nombre) => {
@@ -47,9 +56,11 @@ function Sidebar({ onNavegar, pantallaActiva, usuario }) {
           <li onClick={() => onNavegar('asistencia')}>
             <span style={obtenerEstiloItem('asistencia')}><span>📋</span> Registrar Asistencia</span>
           </li>
-          <li onClick={() => onNavegar('comisiones')}>
-            <span style={obtenerEstiloItem('comisiones')}><span>🧾</span> Comisiones</span>
-          </li>
+          {puedeVerComisiones && (
+            <li onClick={() => onNavegar('comisiones')}>
+              <span style={obtenerEstiloItem('comisiones')}><span>🧾</span> Comisiones</span>
+            </li>
+          )}
 
           {/* 🛡️ CONDICIONAL: Listas de Espera (Oculto para encargados, ayudantes y voluntarios) */}
           {puedeVerListas && (

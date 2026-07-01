@@ -99,14 +99,26 @@ function App() {
 
   // 🛡️ CAPA GLOBAL DE PERMISOS DERIVADA DEL BACKEND
   const rolUsuario = session.user?.rol?.nombre;
+  const rolUsuarioNormalizado = (rolUsuario || '').toString().toLowerCase().trim();
   
   // 1. Verificación para sección de Administración (Solo Administrador)
-  const esAdministrador = rolUsuario === 'Administrador';
+  const esAdministrador = rolUsuarioNormalizado === 'administrador';
+  const esCoordinador = rolUsuarioNormalizado === 'coordinador';
 
   // 2. Verificación para Listas de Espera (Todos MENOS Encargado, Voluntarios y Ayudante)
   const permisosDelUsuario = session.user?.rol?.permisos || [];
   const tienePermisoListas = permisosDelUsuario.some(p => p.nombre === "Gestionar listas");
   const puedeVerListas = esAdministrador || tienePermisoListas;
+
+  // 3. Verificación para Comisiones (Oculto para Encargado, Voluntarios y Ayudantes)
+  const esEncargado = rolUsuarioNormalizado === 'encargado';
+  const esVoluntario = rolUsuarioNormalizado === 'voluntarios' || rolUsuarioNormalizado === 'voluntario';
+  const esAyudante = rolUsuarioNormalizado === 'ayudante' || rolUsuarioNormalizado === 'ayudantes';
+  const tienePermisoComisiones = permisosDelUsuario.some(p => {
+    const nombreNormalizado = (p.nombre || '').toString().toLowerCase().trim();
+    return nombreNormalizado === 'ver comisiones' || nombreNormalizado === 'ver_comisiones';
+  });
+  const puedeVerComisiones = (esAdministrador || esCoordinador || tienePermisoComisiones) && !esEncargado && !esVoluntario && !esAyudante;
 
   return (
     <div className="app-container">
@@ -140,7 +152,16 @@ function App() {
           {pantallaActual === 'dashboard' && <Dashboard onNavegar={handleNavegar} />}
           {pantallaActual === 'familias' && <Familias onNavegar={handleNavegar} usuario={session.user} />}
           {pantallaActual === 'asistencia' && <Asistencia onNavigate={handleNavegar} parametros={parametrosNavegacion} usuario={session.user} />}
-          {pantallaActual === 'comisiones' && <Comisiones onNavegar={handleNavegar} parametros={parametrosNavegacion} />}
+          {pantallaActual === 'comisiones' && (
+            puedeVerComisiones ? (
+              <Comisiones onNavegar={handleNavegar} parametros={parametrosNavegacion} />
+            ) : (
+              <div style={{ padding: '2rem', textAlign: 'center', color: '#e53e3e' }}>
+                <h2>Acceso Restringido</h2>
+                <p>Tu rol ({rolUsuario}) no tiene permisos para acceder a Comisiones.</p>
+              </div>
+            )
+          )}
           {pantallaActual === 'donaciones' && <Donaciones onNavegar={handleNavegar} />}
           
           {/* 🛡️ RENDERIZADO PROTEGIDO: Listas de Espera */}

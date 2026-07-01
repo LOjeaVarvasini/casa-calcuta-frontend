@@ -216,9 +216,12 @@ function getEstadoListaLabel(estado) {
 function Familias({ onNavegar, usuario }) {
   // 🛡️ CONTROL DE PERMISOS BASADO EN ROLES DEL BACKEND (Blindado para Administradores y Coordinadores)
   const rolUsuario = usuario?.rol?.nombre;
-  const esAdministrador = rolUsuario === 'Administrador';
-  const esCoordinador = rolUsuario === 'Coordinador';
-  const esEncargado = rolUsuario === 'Encargado';
+  const rolUsuarioNormalizado = (rolUsuario || '').toString().toLowerCase().trim();
+  const esAdministrador = rolUsuarioNormalizado === 'administrador';
+  const esCoordinador = rolUsuarioNormalizado === 'coordinador';
+  const esEncargado = rolUsuarioNormalizado === 'encargado';
+  const esVoluntario = rolUsuarioNormalizado === 'voluntarios' || rolUsuarioNormalizado === 'voluntario';
+  const esAyudante = rolUsuarioNormalizado === 'ayudante' || rolUsuarioNormalizado === 'ayudantes';
   
   const permisosDelUsuario = usuario?.rol?.permisos || [];
 
@@ -233,10 +236,10 @@ function Familias({ onNavegar, usuario }) {
     return nombreNormalizado === 'evaluar prioridad social' || nombreNormalizado === 'evaluar_prioridad_social';
   });
 
-  const puedeVerComisiones = esAdministrador || esCoordinador || permisosDelUsuario.some(p => {
+  const puedeVerComisiones = (esAdministrador || esCoordinador || permisosDelUsuario.some(p => {
     const nombreNormalizado = (p.nombre || '').toString().toLowerCase().trim();
     return nombreNormalizado === 'ver comisiones' || nombreNormalizado === 'ver_comisiones';
-  });
+  })) && !esEncargado && !esVoluntario && !esAyudante;
 
   // Helper para inyectar estilos grises a botones deshabilitados por rol
   const getEstiloBotonRestringido = (tienePermiso, estiloOriginal = {}) => {
